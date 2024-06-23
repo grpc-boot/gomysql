@@ -11,11 +11,11 @@ func Exec(db Executor, query string, args ...any) (sql.Result, error) {
 }
 
 func ExecContext(ctx context.Context, db Executor, query string, args ...any) (sql.Result, error) {
-	return db.ExecContext(ctx, query, args)
+	return db.ExecContext(ctx, query, args...)
 }
 
 func ExecTimeout(timeout time.Duration, db Executor, query string, args ...any) (sql.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return ExecContext(ctx, db, query, args)
+	return ExecContext(ctx, db, query, args...)
 }

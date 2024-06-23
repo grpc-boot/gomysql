@@ -31,6 +31,43 @@ type Options struct {
 	ConnMaxLifetimeSecond int64  `json:"connMaxLifetimeSecond" yaml:"connMaxLifetimeSecond"`
 }
 
+func (o *Options) format() *Options {
+	defaultOpt := DefaultMysqlOption()
+	if o.Host == "" {
+		o.Host = defaultOpt.Host
+	}
+
+	if o.Port == 0 {
+		o.Port = defaultOpt.Port
+	}
+
+	if o.UserName == "" {
+		o.UserName = defaultOpt.UserName
+	}
+
+	if o.CharSet == "" {
+		o.CharSet = defaultOpt.CharSet
+	}
+
+	if o.MaxOpenConns == 0 {
+		o.MaxOpenConns = defaultOpt.MaxOpenConns
+	}
+
+	if o.ConnMaxLifetimeSecond == 0 {
+		o.ConnMaxLifetimeSecond = defaultOpt.ConnMaxLifetimeSecond
+	}
+
+	if o.MaxIdleConns == 0 {
+		o.MaxIdleConns = defaultOpt.MaxIdleConns
+	}
+
+	if o.ConnMaxIdleTimeSecond == 0 {
+		o.ConnMaxIdleTimeSecond = defaultOpt.ConnMaxIdleTimeSecond
+	}
+
+	return o
+}
+
 func (o *Options) ConnMaxIdleTime() time.Duration {
 	return time.Duration(o.ConnMaxIdleTimeSecond) * time.Second
 }

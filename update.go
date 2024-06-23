@@ -11,7 +11,7 @@ import (
 
 func Update(db Executor, table, setters string, condition condition.Condition) (sql.Result, error) {
 	query, args := helper.Update(table, setters, condition)
-	return Exec(db, query, args)
+	return Exec(db, query, args...)
 }
 
 func UpdateContext(ctx context.Context, db Executor, table, setters string, condition condition.Condition) (sql.Result, error) {
