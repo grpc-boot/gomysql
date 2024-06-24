@@ -132,16 +132,16 @@ func (db *Db) InsertTimeout(timeout time.Duration, table string, columns helper.
 	return InsertTimeout(timeout, db.pool, table, columns, rows...)
 }
 
-func (db *Db) Update(table string, setter string, where condition.Condition) (sql.Result, error) {
-	return Update(db.pool, table, setter, where)
+func (db *Db) Update(table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
+	return Update(db.pool, table, setter, where, setterArgs...)
 }
 
-func (db *Db) UpdateContext(ctx context.Context, table string, setter string, where condition.Condition) (sql.Result, error) {
-	return UpdateContext(ctx, db.pool, table, setter, where)
+func (db *Db) UpdateContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
+	return UpdateContext(ctx, db.pool, table, setter, where, setterArgs...)
 }
 
-func (db *Db) UpdateTimeout(timeout time.Duration, table string, setter string, where condition.Condition) (sql.Result, error) {
-	return UpdateTimeout(timeout, db.pool, table, setter, where)
+func (db *Db) UpdateTimeout(timeout time.Duration, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
+	return UpdateTimeout(timeout, db.pool, table, setter, where, setterArgs...)
 }
 
 func (db *Db) Delete(table string, where condition.Condition) (sql.Result, error) {

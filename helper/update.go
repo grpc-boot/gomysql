@@ -6,7 +6,7 @@ import (
 	"github.com/grpc-boot/gomysql/condition"
 )
 
-func Update(table, setters string, condition condition.Condition) (sql string, args []any) {
+func Update(table, setters string, condition condition.Condition, setterArgs ...any) (sql string, args []any) {
 	var (
 		where  string
 		buffer strings.Builder
@@ -30,5 +30,9 @@ func Update(table, setters string, condition condition.Condition) (sql string, a
 		buffer.WriteString(where)
 	}
 
-	return buffer.String(), args
+	if len(setterArgs) == 0 {
+		return buffer.String(), args
+	}
+
+	return buffer.String(), append(setterArgs, args)
 }

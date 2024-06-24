@@ -2,7 +2,6 @@ package gomysql
 
 import (
 	"context"
-	"fmt"
 	"github.com/grpc-boot/gomysql/condition"
 	"log"
 	"strings"
@@ -46,8 +45,9 @@ func TestDb_Update(t *testing.T) {
 	res, err := db.UpdateTimeout(
 		time.Second,
 		`users`,
-		fmt.Sprintf(`last_login_at="%s"`, time.Now().Format(time.DateTime)),
+		`last_login_at=?`,
 		condition.Equal{Field: "id", Value: 1},
+		time.Now().Format(time.DateTime),
 	)
 
 	if err != nil {
