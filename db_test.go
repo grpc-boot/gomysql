@@ -2,12 +2,12 @@ package gomysql
 
 import (
 	"context"
-	"github.com/grpc-boot/gomysql/condition"
 	"log"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
