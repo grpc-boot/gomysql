@@ -27,6 +27,28 @@ func init() {
 	}
 }
 
+func TestDb_Exec(t *testing.T) {
+	res, err := db.Exec("CREATE TABLE IF NOT EXISTS `users` " +
+		"(`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键id'," +
+		"`user_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '登录名'," +
+		"`nickname` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '昵称'," +
+		"`passwd` char(32) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '密码'," +
+		"`email` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '邮箱'," +
+		"`mobile` varchar(16) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '手机号'," +
+		"`is_on` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '账号状态(1已启用，0已禁用)'," +
+		"`created_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT '创建时间'," +
+		"`updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间'," +
+		"`last_login_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '上次登录时间'," +
+		"`remark` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '备注'," +
+		"PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;")
+	if err != nil {
+		t.Fatalf("create table failed with error: %v\n", err)
+	}
+
+	count, err := res.RowsAffected()
+	t.Logf("rows affected: %d error: %v\n", count, err)
+}
+
 func TestDb_Insert(t *testing.T) {
 	res, err := db.Insert(
 		`users`,
