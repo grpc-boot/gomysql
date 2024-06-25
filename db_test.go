@@ -74,3 +74,30 @@ func TestDb_Delete(t *testing.T) {
 	count, _ := res.RowsAffected()
 	t.Logf("delete data rows affected: %d", count)
 }
+
+func TestDb_Find(t *testing.T) {
+	// SELECT * FROM users WHERE id=1
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 2})
+
+	defer query.Close()
+
+	record, err := db.FindOne(query)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("record: %+v\n", record)
+
+	// SELECT * FROM users WHERE id IN(1, 2)
+	query1 := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.In[int]{"id", []int{1, 2}})
+	defer query1.Close()
+
+	records, err := db.FindTimeout(time.Second*2, query)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("records: %+v\n", records)
+}
