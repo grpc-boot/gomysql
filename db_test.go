@@ -116,11 +116,15 @@ func TestDb_Find(t *testing.T) {
 	}
 	t.Logf("records: %+v\n", records)
 
-	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at> timestamp
+	// SELECT * FROM users WHERE (user_name LIKE 'animal' AND created_at BETWEEN timestamp1 AND timestamp2) OR user_name LIKE 'user%'
 	query3 := helper.AcquireQuery().
 		From(`users`).
 		Where(condition.Or{
-			condition.And{},
+			condition.And{
+				condition.BeginWith{"user_name", "animal"},
+				condition.Between{"created_at", time.Now().Add(-30 * 7 * 24 * time.Hour).Unix(), time.Now().Unix()},
+			},
+			condition.BeginWith{"user_name", "user"},
 		})
 	defer query3.Close()
 
