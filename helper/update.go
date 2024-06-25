@@ -34,5 +34,5 @@ func Update(table, setters string, condition condition.Condition, setterArgs ...
 		return buffer.String(), args
 	}
 
-	return buffer.String(), append(setterArgs, args)
+	return buffer.String(), append(setterArgs, args...)
 }
