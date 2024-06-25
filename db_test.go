@@ -95,7 +95,36 @@ func TestDb_Find(t *testing.T) {
 		Where(condition.In[int]{"id", []int{1, 2}})
 	defer query1.Close()
 
-	records, err := db.FindTimeout(time.Second*2, query)
+	records, err := db.FindTimeout(time.Second*2, query1)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("records: %+v\n", records)
+
+	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at> timestamp
+	query2 := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.And{
+			condition.BeginWith{"user_name", "user"},
+			condition.Gte{"created_at", time.Now().Add(-7 * 24 * time.Hour).Unix()},
+		})
+	defer query2.Close()
+
+	records, err = db.FindTimeout(time.Second*2, query2)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("records: %+v\n", records)
+
+	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at> timestamp
+	query3 := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Or{
+			condition.And{},
+		})
+	defer query3.Close()
+
+	records, err = db.FindTimeout(time.Second*2, query3)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
