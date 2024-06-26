@@ -18,7 +18,10 @@ var (
 func init() {
 	var err error
 	db, err = NewDb(Options{
+		Host:     "127.0.0.1",
+		Port:     3306,
 		DbName:   "users",
+		UserName: "root",
 		Password: "12345678",
 	})
 
