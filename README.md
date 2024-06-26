@@ -5,7 +5,7 @@ go语言实现的mysql帮助库
 
 - 使用说明
   - [实例化db](#实例化db) 
-  - [create table](#create table) 
+  - [create-table](#create-table) 
   - [Select](#Select) 
   - [Insert](#Insert) 
   - [Update](#Update) 
@@ -38,7 +38,7 @@ func main() {
 
 ```
 
-#### create table
+#### create-table
 
 ```go
 package main
