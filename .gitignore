@@ -5,6 +5,9 @@
 # ide
 .idea
 
+# cmd
+cmd
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
