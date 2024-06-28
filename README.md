@@ -90,7 +90,7 @@ func TestDb_Find(t *testing.T) {
 	// SELECT * FROM users WHERE id=1
 	query := helper.AcquireQuery().
 		From(`users`).
-		Where(condition.Equal{"id", 2})
+		Where(condition.Equal{"id", 1})
 
 	defer query.Close()
 
@@ -112,7 +112,7 @@ func TestDb_Find(t *testing.T) {
 	}
 	t.Logf("records: %+v\n", records)
 
-	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at> timestamp
+	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at>= timestamp
 	query2 := helper.AcquireQuery().
 		From(`users`).
 		Where(condition.And{
