@@ -249,8 +249,8 @@ import (
 	"context"
 	"testing"
 	"time"
-
-    "github.com/grpc-boot/gomysql"
+	
+	"github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
