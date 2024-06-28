@@ -10,6 +10,7 @@ go语言实现的mysql帮助库
   - [Insert](#Insert) 
   - [Update](#Update) 
   - [Delete](#Delete) 
+  - [Transaction](#Transaction) 
 
 #### 实例化db
 
@@ -182,7 +183,6 @@ func TestDb_Insert(t *testing.T) {
 package main
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -214,7 +214,7 @@ func TestDb_Update(t *testing.T) {
 package main
 
 import (
-	"strings"
+	"context"
 	"testing"
 	"time"
 
@@ -237,6 +237,57 @@ func TestDb_Delete(t *testing.T) {
 
 	count, _ := res.RowsAffected()
 	t.Logf("delete data rows affected: %d", count)
+}
+```
+
+#### Transaction
+
+```go
+package main
+
+import (
+	"context"
+	"testing"
+	"time"
+
+    "github.com/grpc-boot/gomysql"
+	"github.com/grpc-boot/gomysql/condition"
+	"github.com/grpc-boot/gomysql/helper"
+)
+
+func TestDb_BeginTx(t *testing.T) {
+  ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+  defer cancel()
+  tx, err := db.BeginTx(ctx, nil)
+  if err != nil {
+    t.Fatalf("begin failed with error: %v", err)
+  }
+
+  query := helper.AcquireQuery().
+    From(`users`).
+    Where(condition.Equal{"id", 1})
+  defer query.Close()
+  rows, err := gomysql.Select(tx, query)
+  records, err := gomysql.Scan(rows, err)
+  if err != nil {
+    tx.Rollback()
+    t.Fatalf("query failed with error: %v", err)
+  }
+
+  if len(records) != 1 {
+    tx.Rollback()
+    t.Fatal("row not exists")
+  }
+
+  res, err := gomysql.Update(tx, `users`, "updated_at=?", condition.Equal{"updated_at", records[0].String("updated_at")}, time.Now().Format(time.DateTime))
+  if err != nil {
+    tx.Rollback()
+    t.Fatalf("update failed with error: %v", err)
+  }
+
+  tx.Commit()
+  count, _ := res.RowsAffected()
+  t.Logf("updated count: %d", count)
 }
 ```
 

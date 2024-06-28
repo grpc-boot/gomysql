@@ -159,3 +159,38 @@ func TestDb_Find(t *testing.T) {
 	}
 	t.Logf("records: %+v\n", records)
 }
+
+func TestDb_BeginTx(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin failed with error: %v", err)
+	}
+
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 1})
+	defer query.Close()
+	rows, err := Select(tx, query)
+	records, err := Scan(rows, err)
+	if err != nil {
+		tx.Rollback()
+		t.Fatalf("query failed with error: %v", err)
+	}
+
+	if len(records) != 1 {
+		tx.Rollback()
+		t.Fatal("row not exists")
+	}
+
+	res, err := Update(tx, `users`, "updated_at=?", condition.Equal{"updated_at", records[0].String("updated_at")}, time.Now().Format(time.DateTime))
+	if err != nil {
+		tx.Rollback()
+		t.Fatalf("update failed with error: %v", err)
+	}
+
+	tx.Commit()
+	count, _ := res.RowsAffected()
+	t.Logf("updated count: %d", count)
+}
