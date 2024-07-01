@@ -172,8 +172,7 @@ func TestDb_BeginTx(t *testing.T) {
 		From(`users`).
 		Where(condition.Equal{"id", 1})
 	defer query.Close()
-	rows, err := Select(tx, query)
-	records, err := Scan(rows, err)
+	records, err := Find(tx, query)
 	if err != nil {
 		tx.Rollback()
 		t.Fatalf("query failed with error: %v", err)
