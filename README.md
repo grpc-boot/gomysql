@@ -267,8 +267,7 @@ func TestDb_BeginTx(t *testing.T) {
     From(`users`).
     Where(condition.Equal{"id", 1})
   defer query.Close()
-  rows, err := gomysql.Select(tx, query)
-  records, err := gomysql.Scan(rows, err)
+  records, err := gomysql.Find(tx, query)
   if err != nil {
     tx.Rollback()
     t.Fatalf("query failed with error: %v", err)
