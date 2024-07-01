@@ -83,41 +83,27 @@ func (db *Db) AcquireQuery() *helper.Query {
 }
 
 func (db *Db) FindOne(q *helper.Query) (Record, error) {
-	return db.FindOneContext(context.Background(), q)
+	return FindOne(db.pool, q)
 }
 
 func (db *Db) FindOneContext(ctx context.Context, q *helper.Query) (Record, error) {
-	records, err := db.FindContext(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(records) == 0 {
-		return nil, nil
-	}
-
-	return records[0], nil
+	return FindOneContext(ctx, db.pool, q)
 }
 
 func (db *Db) FindOneTimeout(timeout time.Duration, q *helper.Query) (Record, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return db.FindOneContext(ctx, q)
+	return FindOneTimeout(timeout, db.pool, q)
 }
 
 func (db *Db) Find(q *helper.Query) (records []Record, err error) {
-	rows, err := Select(db.pool, q)
-	return Scan(rows, err)
+	return Find(db.pool, q)
 }
 
 func (db *Db) FindContext(ctx context.Context, q *helper.Query) (records []Record, err error) {
-	rows, err := SelectContext(ctx, db.pool, q)
-	return Scan(rows, err)
+	return FindContext(ctx, db.pool, q)
 }
 
 func (db *Db) FindTimeout(timeout time.Duration, q *helper.Query) (records []Record, err error) {
-	rows, err := SelectTimeout(timeout, db.pool, q)
-	return Scan(rows, err)
+	return FindTimeout(timeout, db.pool, q)
 }
 
 func (db *Db) Insert(table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
