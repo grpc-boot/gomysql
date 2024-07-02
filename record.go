@@ -14,9 +14,24 @@ func (r Record) String(key string) string {
 	return value
 }
 
+func (r Record) ToBool(key string) bool {
+	value, _ := r[key]
+	return convert.String2Bool(value)
+}
+
 func (r Record) ToUint32(key string) uint32 {
 	value, _ := r[key]
 	return convert.String2Uint32(value)
+}
+
+func (r Record) ToInt32(key string) int32 {
+	value, _ := r[key]
+	return convert.String2Int32(value)
+}
+
+func (r Record) ToUint64(key string) uint64 {
+	value, _ := r[key]
+	return convert.String2Uint64(value)
 }
 
 func (r Record) ToInt64(key string) int64 {
@@ -27,4 +42,19 @@ func (r Record) ToInt64(key string) int64 {
 func (r Record) ToUint8(key string) uint8 {
 	value, _ := r[key]
 	return convert.String2Uint8(value)
+}
+
+func (r Record) ToInt8(key string) int8 {
+	value, _ := r[key]
+	return convert.String2Int8(value)
+}
+
+func (r Record) ToFloat64(key string) float64 {
+	value, _ := r[key]
+	return convert.String2Float64(value)
+}
+
+func (r Record) ToBytes(key string) []byte {
+	value, _ := r[key]
+	return convert.String2Bytes(value)
 }
