@@ -19,6 +19,11 @@ func (r Record) ToBool(key string) bool {
 	return convert.String2Bool(value)
 }
 
+func (r Record) ToInt(key string) int {
+	value, _ := r[key]
+	return int(convert.String2Int64(value))
+}
+
 func (r Record) ToUint32(key string) uint32 {
 	value, _ := r[key]
 	return convert.String2Uint32(value)
