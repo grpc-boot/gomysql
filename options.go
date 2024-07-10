@@ -1,11 +1,8 @@
 package gomysql
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"time"
-
-	"github.com/grpc-boot/gomysql/convert"
 )
 
 func DefaultMysqlOption() Options {
@@ -32,11 +29,6 @@ type Options struct {
 	MaxOpenConns          int    `json:"maxOpenConns" yaml:"maxOpenConns"`
 	ConnMaxIdleTimeSecond int64  `json:"connMaxIdleTimeSecond" yaml:"connMaxIdleTimeSecond"`
 	ConnMaxLifetimeSecond int64  `json:"connMaxLifetimeSecond" yaml:"connMaxLifetimeSecond"`
-}
-
-func (o *Options) Id(vi int) string {
-	id := sha1.Sum(convert.String2Bytes(fmt.Sprintf("%s-%d%s_%d%s", o.Host, o.Port, o.DbName, vi, o.UserName)))
-	return convert.Bytes2String(id[:])
 }
 
 func (o *Options) format() *Options {
