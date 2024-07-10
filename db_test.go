@@ -193,3 +193,69 @@ func TestDb_BeginTx(t *testing.T) {
 	count, _ := res.RowsAffected()
 	t.Logf("updated count: %d", count)
 }
+
+func TestPool_Random(t *testing.T) {
+	opt := PoolOptions{
+		Masters: []Options{
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+		},
+		Slaves: []Options{
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+		},
+	}
+
+	pool, err := NewPool(opt)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 1})
+	defer query.Close()
+
+	record, err := pool.Random(TypeMaster).FindOne(query)
+	if err != nil {
+		t.Fatalf("find one error: %v", err)
+	}
+	t.Logf("query records: %+v", record)
+
+	record, err = pool.Random(TypeSlave).FindOne(query)
+	if err != nil {
+		t.Fatalf("find one error: %v", err)
+	}
+	t.Logf("query records: %+v", record)
+}
