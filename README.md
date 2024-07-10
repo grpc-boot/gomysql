@@ -11,6 +11,7 @@ go语言实现的mysql帮助库
   - [Update](#Update) 
   - [Delete](#Delete) 
   - [Transaction](#Transaction) 
+  - [Read-Write-Splitting](#Read-Write-Splitting) 
 
 #### 实例化db
 
@@ -287,6 +288,85 @@ func TestDb_BeginTx(t *testing.T) {
   tx.Commit()
   count, _ := res.RowsAffected()
   t.Logf("updated count: %d", count)
+}
+```
+
+#### Read-Write-Splitting
+
+```go
+package main
+
+import (
+  "testing"
+
+  "github.com/grpc-boot/gomysql"
+  "github.com/grpc-boot/gomysql/condition"
+)
+
+func TestPool_Random(t *testing.T) {
+	opt := gomysql.PoolOptions{
+		Masters: []gomysql.Options{
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+		},
+		Slaves: []gomysql.Options{
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+			{
+				Host:     "127.0.0.1",
+				Port:     3306,
+				DbName:   "users",
+				UserName: "root",
+				Password: "12345678",
+			},
+		},
+	}
+
+	pool, err := gomysql.NewPool(opt)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 1})
+	defer query.Close()
+
+	record, err := pool.Random(TypeMaster).FindOne(query)
+	if err != nil {
+		t.Fatalf("find one error: %v", err)
+	}
+	t.Logf("query records: %+v", record)
+
+	record, err = pool.Random(TypeSlave).FindOne(query)
+	if err != nil {
+		t.Fatalf("find one error: %v", err)
+	}
+	t.Logf("query records: %+v", record)
 }
 ```
 
