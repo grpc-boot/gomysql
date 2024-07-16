@@ -3,7 +3,7 @@ package condition
 import (
 	"strings"
 
-	"github.com/grpc-boot/base/v2/kind"
+	"github.com/grpc-boot/gomysql/kind"
 )
 
 type In[T any] struct {
