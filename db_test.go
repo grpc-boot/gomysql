@@ -2,6 +2,7 @@ package gomysql
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -28,6 +29,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("init db failed with error: %v\n", err)
 	}
+
+	SetLogger(func(query string, args ...any) {
+		fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
+	})
 }
 
 func TestDb_Exec(t *testing.T) {

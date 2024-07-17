@@ -7,10 +7,16 @@ import (
 )
 
 func Query(db Executor, query string, args ...any) (*sql.Rows, error) {
-	return db.Query(query, args...)
+	return QueryContext(context.Background(), db, query, args...)
 }
 
 func QueryContext(ctx context.Context, db Executor, query string, args ...any) (*sql.Rows, error) {
+	defer func() {
+		if logger != nil {
+			logger(query, args...)
+		}
+	}()
+
 	return db.QueryContext(ctx, query, args...)
 }
 

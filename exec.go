@@ -7,10 +7,16 @@ import (
 )
 
 func Exec(db Executor, query string, args ...any) (sql.Result, error) {
-	return db.Exec(query, args...)
+	return ExecContext(context.Background(), db, query, args...)
 }
 
 func ExecContext(ctx context.Context, db Executor, query string, args ...any) (sql.Result, error) {
+	defer func() {
+		if logger != nil {
+			logger(query, args...)
+		}
+	}()
+
 	return db.ExecContext(ctx, query, args...)
 }
 
