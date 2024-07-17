@@ -12,6 +12,7 @@ go语言实现的mysql帮助库
   - [Delete](#Delete) 
   - [Transaction](#Transaction) 
   - [Read-Write-Splitting](#Read-Write-Splitting) 
+  - [Sql-Log](#Sql-Log) 
 
 #### 实例化db
 
@@ -368,5 +369,26 @@ func TestPool_Random(t *testing.T) {
 	}
 	t.Logf("query records: %+v", record)
 }
+```
+
+#### Sql-Log
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/grpc-boot/gomysql"
+)
+
+func init() {
+  // 输出sql和参数到标准输入，修改func定制自己的日志，方便分析sql
+  gomysql.SetLogger(func(query string, args ...any) {
+    fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
+  })
+}
+
 ```
 
