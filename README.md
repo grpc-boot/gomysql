@@ -317,7 +317,7 @@ type UserModel struct {
 	Passwd   string
 }
 
-func (um *UserModel) Clone() gomysql.Model {
+func (um *UserModel) NewModel() gomysql.Model {
 	return &UserModel{}
 }
 

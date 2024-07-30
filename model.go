@@ -3,7 +3,7 @@ package gomysql
 type Model interface {
 	TableName(args ...any) string
 	Db(args ...any) *Db
-	Clone() Model
+	NewModel() Model
 	Assemble(br BytesRecord)
 }
 
@@ -14,7 +14,7 @@ func BytesRecords2Models[T Model](brs []BytesRecord, model T) []T {
 	}
 
 	for _, br := range brs {
-		m := model.Clone().(T)
+		m := model.NewModel().(T)
 		m.Assemble(br)
 		models = append(models, m)
 	}

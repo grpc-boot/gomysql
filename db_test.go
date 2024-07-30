@@ -275,7 +275,7 @@ type UserModel struct {
 	Passwd   string
 }
 
-func (um *UserModel) Clone() Model {
+func (um *UserModel) NewModel() Model {
 	return &UserModel{}
 }
 
