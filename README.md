@@ -11,6 +11,7 @@ go语言实现的mysql帮助库
   - [Update](#Update) 
   - [Delete](#Delete) 
   - [Transaction](#Transaction) 
+  - [Model](#Model)
   - [Read-Write-Splitting](#Read-Write-Splitting) 
   - [Sql-Log](#Sql-Log) 
 
@@ -290,6 +291,85 @@ func TestDb_BeginTx(t *testing.T) {
   count, _ := res.RowsAffected()
   t.Logf("updated count: %d", count)
 }
+```
+
+#### Model
+
+```go
+package main
+
+import (
+  "testing"
+  
+  "github.com/grpc-boot/gomysql"
+  "github.com/grpc-boot/gomysql/condition"
+  "github.com/grpc-boot/gomysql/helper"
+)
+
+var (
+	DefaultUserModel = &UserModel{}
+)
+
+type UserModel struct {
+	Id       int64
+	UserName string
+	Passwd   string
+}
+
+func (um *UserModel) Clone() gomysql.Model {
+	return &UserModel{}
+}
+
+func (um *UserModel) Assemble(br gomysql.BytesRecord) {
+	um.Id = br.ToInt64("id")
+	um.UserName = br.String("user_name")
+	um.Passwd = br.String("passwd")
+}
+
+func (um *UserModel) TableName(args ...any) string {
+	return "users"
+}
+
+func (um *UserModel) Db(args ...any) *gomysql.Db {
+	return nil
+}
+
+func TestBytesRecords2Model(t *testing.T) {
+  brs := []gomysql.BytesRecord{
+    {
+      "id":        []byte(`100008834`),
+      "user_name": []byte(`慌了神`),
+      "passwd":    []byte(`sdfw9df239sadfj239fasdfadf`),
+    },
+    {
+      "id":        []byte(`1000123834`),
+      "user_name": []byte(`慌了神123dfasdf`),
+      "passwd":    []byte(`adfj239fasdfadfasdfasfd`),
+    },
+  }
+
+  models := gomysql.BytesRecords2Models(brs, DefaultUserModel)
+  if len(models) != len(brs) {
+    t.Fatalf("want %d, got %d", len(brs), len(models))
+  }
+
+  t.Logf("model 0: %+v", models[0])
+}
+
+func TestFindModel(t *testing.T) {
+  query := helper.AcquireQuery().
+    From(`users`).
+    Where(condition.Equal{"id", 1})
+  defer query.Close()
+
+  users, err := gomysql.FindModels(DefaultUserModel, db.Pool(), query)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+
+  t.Logf("users: %+v", users)
+}
+
 ```
 
 #### Read-Write-Splitting

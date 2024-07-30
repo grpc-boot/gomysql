@@ -314,3 +314,17 @@ func TestBytesRecords2Model(t *testing.T) {
 
 	t.Logf("model 0: %+v", models[0])
 }
+
+func TestFindModel(t *testing.T) {
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 1})
+	defer query.Close()
+
+	users, err := FindModels(DefaultUserModel, db.Pool(), query)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+
+	t.Logf("users: %+v", users)
+}

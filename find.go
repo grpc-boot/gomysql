@@ -7,6 +7,55 @@ import (
 	"github.com/grpc-boot/gomysql/helper"
 )
 
+func FindModels[T Model](model T, db Executor, q *helper.Query) ([]T, error) {
+	return FindModelsContext(context.Background(), model, db, q)
+}
+
+func FindModel[T Model](model T, db Executor, q *helper.Query) (T, error) {
+	return FindModelContext(context.Background(), model, db, q)
+}
+
+func FindModelsTimeout[T Model](timeout time.Duration, model T, db Executor, q *helper.Query) ([]T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return FindModelsContext(ctx, model, db, q)
+}
+
+func FindModelTimeout[T Model](timeout time.Duration, model T, db Executor, q *helper.Query) (T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return FindModelContext(ctx, model, db, q)
+}
+
+func FindModelsContext[T Model](ctx context.Context, model T, db Executor, q *helper.Query) ([]T, error) {
+	rows, err := SelectContext(ctx, db, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return ScanModel(model, rows, err)
+}
+
+func FindModelContext[T Model](ctx context.Context, model T, db Executor, q *helper.Query) (m T, err error) {
+	rows, err := SelectContext(ctx, db, q)
+	if err != nil {
+		return
+	}
+
+	models, err := ScanModel(model, rows, err)
+	if err != nil {
+		return
+	}
+
+	if len(models) == 0 {
+		return
+	}
+
+	return models[0], nil
+}
+
 func FindOne(db Executor, q *helper.Query) (Record, error) {
 	return FindOneContext(context.Background(), db, q)
 }
