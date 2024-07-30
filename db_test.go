@@ -285,14 +285,6 @@ func (um *UserModel) Assemble(br BytesRecord) {
 	um.Passwd = br.String("passwd")
 }
 
-func (um *UserModel) TableName(args ...any) string {
-	return "users"
-}
-
-func (um *UserModel) Db(args ...any) *Db {
-	return db
-}
-
 func TestBytesRecords2Model(t *testing.T) {
 	brs := []BytesRecord{
 		{

@@ -64,6 +64,23 @@ func (r Record) ToBytes(key string) []byte {
 	return convert.String2Bytes(value)
 }
 
+func (r Record) ToBytesRecord() BytesRecord {
+	if r == nil {
+		return nil
+	}
+
+	if len(r) == 0 {
+		return BytesRecord{}
+	}
+
+	br := make(BytesRecord, len(r))
+	for key, _ := range r {
+		br[key] = r.ToBytes(key)
+	}
+
+	return br
+}
+
 type BytesRecord map[string][]byte
 
 func (br BytesRecord) Exists(key string) bool {
@@ -124,4 +141,21 @@ func (br BytesRecord) ToFloat64(key string) float64 {
 func (br BytesRecord) Bytes(key string) []byte {
 	value, _ := br[key]
 	return value
+}
+
+func (br BytesRecord) ToRecord() Record {
+	if br == nil {
+		return nil
+	}
+
+	if len(br) == 0 {
+		return Record{}
+	}
+
+	r := make(Record, len(br))
+	for key, _ := range br {
+		r[key] = br.String(key)
+	}
+
+	return r
 }

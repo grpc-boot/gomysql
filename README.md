@@ -327,14 +327,6 @@ func (um *UserModel) Assemble(br gomysql.BytesRecord) {
 	um.Passwd = br.String("passwd")
 }
 
-func (um *UserModel) TableName(args ...any) string {
-	return "users"
-}
-
-func (um *UserModel) Db(args ...any) *gomysql.Db {
-	return db
-}
-
 func TestBytesRecords2Model(t *testing.T) {
   brs := []gomysql.BytesRecord{
     {

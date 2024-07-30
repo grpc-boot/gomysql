@@ -1,8 +1,6 @@
 package gomysql
 
 type Model interface {
-	TableName(args ...any) string
-	Db(args ...any) *Db
 	NewModel() Model
 	Assemble(br BytesRecord)
 }
