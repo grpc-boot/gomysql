@@ -264,3 +264,53 @@ func TestPool_Random(t *testing.T) {
 	}
 	t.Logf("query records: %+v", record)
 }
+
+var (
+	DefaultUserModel = &UserModel{}
+)
+
+type UserModel struct {
+	Id       int64
+	UserName string
+	Passwd   string
+}
+
+func (um *UserModel) Clone() Model {
+	return &UserModel{}
+}
+
+func (um *UserModel) Assemble(br BytesRecord) {
+	um.Id = br.ToInt64("id")
+	um.UserName = br.String("user_name")
+	um.Passwd = br.String("passwd")
+}
+
+func (um *UserModel) TableName(args ...any) string {
+	return "users"
+}
+
+func (um *UserModel) Db(args ...any) *Db {
+	return nil
+}
+
+func TestBytesRecords2Model(t *testing.T) {
+	brs := []BytesRecord{
+		{
+			"id":        []byte(`100008834`),
+			"user_name": []byte(`慌了神`),
+			"passwd":    []byte(`sdfw9df239sadfj239fasdfadf`),
+		},
+		{
+			"id":        []byte(`1000123834`),
+			"user_name": []byte(`慌了神123dfasdf`),
+			"passwd":    []byte(`adfj239fasdfadfasdfasfd`),
+		},
+	}
+
+	models := BytesRecords2Models(brs, DefaultUserModel)
+	if len(models) != len(brs) {
+		t.Fatalf("want %d, got %d", len(brs), len(models))
+	}
+
+	t.Logf("model 0: %+v", models[0])
+}
