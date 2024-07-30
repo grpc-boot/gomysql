@@ -307,6 +307,7 @@ import (
 )
 
 var (
+	db *gomysql.Db
 	DefaultUserModel = &UserModel{}
 )
 
@@ -331,7 +332,7 @@ func (um *UserModel) TableName(args ...any) string {
 }
 
 func (um *UserModel) Db(args ...any) *gomysql.Db {
-	return nil
+	return db
 }
 
 func TestBytesRecords2Model(t *testing.T) {
@@ -362,7 +363,7 @@ func TestFindModel(t *testing.T) {
     Where(condition.Equal{"id", 1})
   defer query.Close()
 
-  users, err := gomysql.FindModels(DefaultUserModel, db.Pool(), query)
+  users, err := gomysql.FindModels(DefaultUserModel, DefaultUserModel.Db().Pool(), query)
   if err != nil {
     t.Fatalf("want nil, got %v", err)
   }
