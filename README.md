@@ -355,7 +355,7 @@ func TestFindModel(t *testing.T) {
     Where(condition.Equal{"id", 1})
   defer query.Close()
 
-  users, err := gomysql.FindModels(DefaultUserModel, DefaultUserModel.Db().Pool(), query)
+  users, err := gomysql.FindModels(DefaultUserModel, db.Pool(), query)
   if err != nil {
     t.Fatalf("want nil, got %v", err)
   }
