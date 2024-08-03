@@ -25,3 +25,17 @@ func QueryTimeout(timeout time.Duration, db Executor, query string, args ...any)
 	defer cancel()
 	return QueryContext(ctx, db, query, args...)
 }
+
+func QueryRow(db Executor, query string, args ...any) *sql.Row {
+	return QueryRowContext(context.Background(), db, query, args...)
+}
+
+func QueryRowContext(ctx context.Context, db Executor, query string, args ...any) *sql.Row {
+	defer func() {
+		if logger != nil {
+			logger(query, args...)
+		}
+	}()
+
+	return db.QueryRowContext(ctx, query, args...)
+}

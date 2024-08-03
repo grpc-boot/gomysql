@@ -45,8 +45,8 @@ func TestDb_Exec(t *testing.T) {
 		"`mobile` varchar(16) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '手机号'," +
 		"`is_on` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '账号状态(1已启用，0已禁用)'," +
 		"`created_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT '创建时间'," +
-		"`updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间'," +
-		"`last_login_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '上次登录时间'," +
+		"`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
+		"`last_login_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上次登录时间'," +
 		"`remark` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '备注'," +
 		"PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;")
 	if err != nil {
@@ -263,60 +263,4 @@ func TestPool_Random(t *testing.T) {
 		t.Fatalf("find one error: %v", err)
 	}
 	t.Logf("query records: %+v", record)
-}
-
-var (
-	DefaultUserModel = &UserModel{}
-)
-
-type UserModel struct {
-	Id       int64
-	UserName string
-	Passwd   string
-}
-
-func (um *UserModel) NewModel() Model {
-	return &UserModel{}
-}
-
-func (um *UserModel) Assemble(br BytesRecord) {
-	um.Id = br.ToInt64("id")
-	um.UserName = br.String("user_name")
-	um.Passwd = br.String("passwd")
-}
-
-func TestBytesRecords2Model(t *testing.T) {
-	brs := []BytesRecord{
-		{
-			"id":        []byte(`100008834`),
-			"user_name": []byte(`慌了神`),
-			"passwd":    []byte(`sdfw9df239sadfj239fasdfadf`),
-		},
-		{
-			"id":        []byte(`1000123834`),
-			"user_name": []byte(`慌了神123dfasdf`),
-			"passwd":    []byte(`adfj239fasdfadfasdfasfd`),
-		},
-	}
-
-	models := BytesRecords2Models(brs, DefaultUserModel)
-	if len(models) != len(brs) {
-		t.Fatalf("want %d, got %d", len(brs), len(models))
-	}
-
-	t.Logf("model 0: %+v", models[0])
-}
-
-func TestFindModel(t *testing.T) {
-	query := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Equal{"id", 1})
-	defer query.Close()
-
-	users, err := FindModels(DefaultUserModel, db.Pool(), query)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
-
-	t.Logf("users: %+v", users)
 }

@@ -77,7 +77,7 @@ func (o *Options) ConnMaxLifetime() time.Duration {
 }
 
 func (o *Options) Dsn() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True",
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s",
 		o.UserName,
 		o.Password,
 		o.Host,

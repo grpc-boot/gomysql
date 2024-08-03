@@ -6,12 +6,12 @@ go语言实现的mysql帮助库
 - 使用说明
   - [实例化db](#实例化db) 
   - [create-table](#create-table) 
+  - [Model](#Model)
   - [Select](#Select) 
   - [Insert](#Insert) 
   - [Update](#Update) 
   - [Delete](#Delete) 
-  - [Transaction](#Transaction) 
-  - [Model](#Model)
+  - [Transaction](#Transaction)
   - [Read-Write-Splitting](#Read-Write-Splitting) 
   - [Sql-Log](#Sql-Log) 
 
@@ -64,8 +64,8 @@ func TestDb_Exec(t *testing.T) {
 		"`mobile` varchar(16) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '手机号'," +
 		"`is_on` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '账号状态(1已启用，0已禁用)'," +
 		"`created_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT '创建时间'," +
-		"`updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间'," +
-		"`last_login_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '上次登录时间'," +
+		"`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
+		"`last_login_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上次登录时间'," +
 		"`remark` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '备注'," +
 		"PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;")
 	if err != nil {
@@ -75,6 +75,110 @@ func TestDb_Exec(t *testing.T) {
 	count, err := res.RowsAffected()
 	t.Logf("rows affected: %d error: %v\n", count, err)
 }
+```
+
+#### Model
+
+```go
+package main
+
+import (
+  "fmt"
+  "log"
+  "time"
+
+  "github.com/grpc-boot/gomysql"
+  "github.com/grpc-boot/gomysql/helper"
+)
+
+var (
+  DefaultUserModel = &UserModel{}
+  db               *gomysql.Db
+)
+
+func init() {
+  var err error
+  db, err = gomysql.NewDb(gomysql.Options{
+    Host:     "127.0.0.1",
+    Port:     3306,
+    DbName:   "users",
+    UserName: "root",
+    Password: "12345678",
+  })
+
+  if err != nil {
+    log.Fatalf("init db failed with error: %v\n", err)
+  }
+
+  gomysql.SetLogger(func(query string, args ...any) {
+    fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
+  })
+}
+
+func main() {
+  current := time.Now()
+  res, err := db.Insert(
+    DefaultUserModel.TableName(),
+    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at", "last_login_at"},
+    helper.Row{"uname", "nickName", "passwd", 1, current.Unix(), current.Format(time.DateTime), current.Format(time.DateTime)},
+  )
+
+  if err != nil {
+    panic(err)
+  }
+
+  id, _ := res.LastInsertId()
+  fmt.Printf("insert id: %d\n", id)
+
+  user, err := gomysql.FindById(db.Pool(), id, DefaultUserModel)
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Printf("UserInfo: %+v\n", user)
+}
+
+type UserModel struct {
+  Id          int64
+  UserName    string
+  NickName    string
+  Passwd      string
+  Email       string
+  Mobile      string
+  IsOn        uint8
+  CreatedAt   int64
+  UpdatedAt   time.Time
+  LastLoginAt time.Time
+  Remark      string
+}
+
+func (um *UserModel) PrimaryKey() string {
+  return `id`
+}
+
+func (um *UserModel) TableName(args ...any) string {
+  return `users`
+}
+
+func (um *UserModel) NewModel() gomysql.Model {
+  return &UserModel{}
+}
+
+func (um *UserModel) Assemble(br gomysql.BytesRecord) {
+  fmt.Printf("updated_at:%s\n", br.String("updated_at"))
+  um.Id = br.ToInt64("id")
+  um.UserName = br.String("user_name")
+  um.NickName = br.String("nickname")
+  um.Passwd = br.String("passwd")
+  um.Email = br.String("email")
+  um.Mobile = br.String("mobile")
+  um.IsOn = br.ToUint8("is_on")
+  um.CreatedAt = br.ToInt64("created_at")
+  um.UpdatedAt, _ = time.Parse(time.DateTime, br.String("updated_at"))
+  um.LastLoginAt, _ = time.Parse(time.DateTime, br.String("last_login_at"))
+  um.Remark = br.String("remark")
+}
+
 ```
 
 #### Select
@@ -291,78 +395,6 @@ func TestDb_BeginTx(t *testing.T) {
   count, _ := res.RowsAffected()
   t.Logf("updated count: %d", count)
 }
-```
-
-#### Model
-
-```go
-package main
-
-import (
-  "testing"
-  
-  "github.com/grpc-boot/gomysql"
-  "github.com/grpc-boot/gomysql/condition"
-  "github.com/grpc-boot/gomysql/helper"
-)
-
-var (
-	db *gomysql.Db
-	DefaultUserModel = &UserModel{}
-)
-
-type UserModel struct {
-	Id       int64
-	UserName string
-	Passwd   string
-}
-
-func (um *UserModel) NewModel() gomysql.Model {
-	return &UserModel{}
-}
-
-func (um *UserModel) Assemble(br gomysql.BytesRecord) {
-	um.Id = br.ToInt64("id")
-	um.UserName = br.String("user_name")
-	um.Passwd = br.String("passwd")
-}
-
-func TestBytesRecords2Model(t *testing.T) {
-  brs := []gomysql.BytesRecord{
-    {
-      "id":        []byte(`100008834`),
-      "user_name": []byte(`慌了神`),
-      "passwd":    []byte(`sdfw9df239sadfj239fasdfadf`),
-    },
-    {
-      "id":        []byte(`1000123834`),
-      "user_name": []byte(`慌了神123dfasdf`),
-      "passwd":    []byte(`adfj239fasdfadfasdfasfd`),
-    },
-  }
-
-  models := gomysql.BytesRecords2Models(brs, DefaultUserModel)
-  if len(models) != len(brs) {
-    t.Fatalf("want %d, got %d", len(brs), len(models))
-  }
-
-  t.Logf("model 0: %+v", models[0])
-}
-
-func TestFindModel(t *testing.T) {
-  query := helper.AcquireQuery().
-    From(`users`).
-    Where(condition.Equal{"id", 1})
-  defer query.Close()
-
-  users, err := gomysql.FindModels(DefaultUserModel, db.Pool(), query)
-  if err != nil {
-    t.Fatalf("want nil, got %v", err)
-  }
-
-  t.Logf("users: %+v", users)
-}
-
 ```
 
 #### Read-Write-Splitting

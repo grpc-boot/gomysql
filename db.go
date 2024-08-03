@@ -54,6 +54,14 @@ func (db *Db) Pool() *sql.DB {
 	return db.pool
 }
 
+func (db *Db) QueryRow(query string, args ...any) *sql.Row {
+	return QueryRow(db.pool, query, args...)
+}
+
+func (db *Db) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return QueryRowContext(ctx, db.pool, query, args...)
+}
+
 func (db *Db) Exec(query string, args ...any) (sql.Result, error) {
 	return Exec(db.pool, query, args...)
 }
