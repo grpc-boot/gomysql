@@ -399,6 +399,8 @@ func TestDb_BeginTx(t *testing.T) {
 
 #### Read-Write-Splitting
 
+> 支持failover和failback
+
 ```go
 package main
 
