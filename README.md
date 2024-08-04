@@ -462,17 +462,17 @@ func TestPool_Random(t *testing.T) {
 		Where(condition.Equal{"id", 1})
 	defer query.Close()
 
-	record, err := pool.Random(TypeMaster).FindOne(query)
-	if err != nil {
-		t.Fatalf("find one error: %v", err)
-	}
-	t.Logf("query records: %+v", record)
-
-	record, err = pool.Random(TypeSlave).FindOne(query)
-	if err != nil {
-		t.Fatalf("find one error: %v", err)
-	}
-	t.Logf("query records: %+v", record)
+    record, err := pool.FindOne(gomysql.TypeMaster, query)
+    if err != nil {
+      t.Fatalf("find one error: %v", err)
+    }
+    t.Logf("query records: %+v", record)
+  
+    record, err = pool.FindOne(gomysql.TypeSlave, query)
+    if err != nil {
+      t.Fatalf("find one error: %v", err)
+    }
+    t.Logf("query records: %+v", record)
 }
 ```
 

@@ -7,6 +7,4 @@ require (
 	golang.org/x/exp v0.0.0-20190121172915-509febef88a4
 )
 
-require (
-	filippo.io/edwards25519 v1.1.0 // indirect
-)
+require filippo.io/edwards25519 v1.1.0 // indirect

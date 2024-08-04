@@ -242,7 +242,7 @@ func TestPool_Random(t *testing.T) {
 		},
 	}
 
-	pool, err := NewPool(opt)
+	pool, err := NewPool(opt, time.Second*10)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
@@ -252,13 +252,13 @@ func TestPool_Random(t *testing.T) {
 		Where(condition.Equal{"id", 1})
 	defer query.Close()
 
-	record, err := pool.Random(TypeMaster).FindOne(query)
+	record, err := pool.FindOne(TypeMaster, query)
 	if err != nil {
 		t.Fatalf("find one error: %v", err)
 	}
 	t.Logf("query records: %+v", record)
 
-	record, err = pool.Random(TypeSlave).FindOne(query)
+	record, err = pool.FindOne(TypeSlave, query)
 	if err != nil {
 		t.Fatalf("find one error: %v", err)
 	}

@@ -55,7 +55,7 @@ func (db *Db) Pool() *sql.DB {
 }
 
 func (db *Db) QueryRow(query string, args ...any) *sql.Row {
-	return QueryRow(db.pool, query, args...)
+	return db.QueryRowContext(context.Background(), query, args...)
 }
 
 func (db *Db) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
@@ -63,7 +63,7 @@ func (db *Db) QueryRowContext(ctx context.Context, query string, args ...any) *s
 }
 
 func (db *Db) Exec(query string, args ...any) (sql.Result, error) {
-	return Exec(db.pool, query, args...)
+	return db.ExecContext(context.Background(), query, args...)
 }
 
 func (db *Db) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -71,11 +71,13 @@ func (db *Db) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 }
 
 func (db *Db) ExecTimeout(timeout time.Duration, query string, args ...any) (sql.Result, error) {
-	return ExecTimeout(timeout, db.pool, query, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.ExecContext(ctx, query, args...)
 }
 
 func (db *Db) Query(query string, args ...any) (*sql.Rows, error) {
-	return Query(db.pool, query, args...)
+	return db.QueryContext(context.Background(), query, args...)
 }
 
 func (db *Db) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
@@ -83,7 +85,9 @@ func (db *Db) QueryContext(ctx context.Context, query string, args ...any) (*sql
 }
 
 func (db *Db) QueryTimeout(timeout time.Duration, query string, args ...any) (*sql.Rows, error) {
-	return QueryTimeout(timeout, db.pool, query, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.QueryContext(ctx, query, args...)
 }
 
 func (db *Db) AcquireQuery() *helper.Query {
@@ -91,7 +95,7 @@ func (db *Db) AcquireQuery() *helper.Query {
 }
 
 func (db *Db) FindOne(q *helper.Query) (Record, error) {
-	return FindOne(db.pool, q)
+	return db.FindOneContext(context.Background(), q)
 }
 
 func (db *Db) FindOneContext(ctx context.Context, q *helper.Query) (Record, error) {
@@ -99,11 +103,13 @@ func (db *Db) FindOneContext(ctx context.Context, q *helper.Query) (Record, erro
 }
 
 func (db *Db) FindOneTimeout(timeout time.Duration, q *helper.Query) (Record, error) {
-	return FindOneTimeout(timeout, db.pool, q)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.FindOneContext(ctx, q)
 }
 
 func (db *Db) Find(q *helper.Query) (records []Record, err error) {
-	return Find(db.pool, q)
+	return db.FindContext(context.Background(), q)
 }
 
 func (db *Db) FindContext(ctx context.Context, q *helper.Query) (records []Record, err error) {
@@ -111,11 +117,13 @@ func (db *Db) FindContext(ctx context.Context, q *helper.Query) (records []Recor
 }
 
 func (db *Db) FindTimeout(timeout time.Duration, q *helper.Query) (records []Record, err error) {
-	return FindTimeout(timeout, db.pool, q)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.FindContext(ctx, q)
 }
 
 func (db *Db) Insert(table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
-	return Insert(db.pool, table, columns, rows...)
+	return db.InsertContext(context.Background(), table, columns, rows...)
 }
 
 func (db *Db) InsertContext(ctx context.Context, table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
@@ -123,11 +131,13 @@ func (db *Db) InsertContext(ctx context.Context, table string, columns helper.Co
 }
 
 func (db *Db) InsertTimeout(timeout time.Duration, table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
-	return InsertTimeout(timeout, db.pool, table, columns, rows...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.InsertContext(ctx, table, columns, rows...)
 }
 
 func (db *Db) Update(table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
-	return Update(db.pool, table, setter, where, setterArgs...)
+	return db.UpdateContext(context.Background(), table, setter, where, setterArgs...)
 }
 
 func (db *Db) UpdateContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
@@ -135,11 +145,13 @@ func (db *Db) UpdateContext(ctx context.Context, table string, setter string, wh
 }
 
 func (db *Db) UpdateTimeout(timeout time.Duration, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
-	return UpdateTimeout(timeout, db.pool, table, setter, where, setterArgs...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.UpdateContext(ctx, table, setter, where, setterArgs...)
 }
 
 func (db *Db) Delete(table string, where condition.Condition) (sql.Result, error) {
-	return Delete(db.pool, table, where)
+	return db.DeleteContext(context.Background(), table, where)
 }
 
 func (db *Db) DeleteContext(ctx context.Context, table string, where condition.Condition) (sql.Result, error) {
@@ -147,7 +159,9 @@ func (db *Db) DeleteContext(ctx context.Context, table string, where condition.C
 }
 
 func (db *Db) DeleteTimeout(timeout time.Duration, table string, where condition.Condition) (sql.Result, error) {
-	return DeleteTimeout(timeout, db.pool, table, where)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return db.DeleteContext(ctx, table, where)
 }
 
 func (db *Db) Begin() (*sql.Tx, error) {
