@@ -140,6 +140,7 @@ func (p *Pool) exec(dbType DbType, fn func(db *Db) error) (err error) {
 			if err != nil && errors.Is(err, driver.ErrBadConn) {
 				continue
 			}
+			p.latestSlave.Store(int32(index))
 			return
 		}
 		return
@@ -164,6 +165,7 @@ func (p *Pool) exec(dbType DbType, fn func(db *Db) error) (err error) {
 		if err != nil && errors.Is(err, driver.ErrBadConn) {
 			continue
 		}
+		p.latestMaster.Store(int32(index))
 		return
 	}
 	return
@@ -344,16 +346,16 @@ func (p *Pool) Close() error {
 }
 
 func (p *Pool) Index(dbType DbType, index int) (*Db, error) {
-	if dbType == TypeMaster {
-		if index >= len(p.masters) {
+	if dbType == TypeSlave && len(p.slaves) > 0 {
+		if index >= len(p.slaves) {
 			return nil, ErrIndexOutRange
 		}
-
-		return p.masters[index], nil
+		return p.slaves[index], nil
 	}
 
-	if index >= len(p.slaves) {
+	if index >= len(p.masters) {
 		return nil, ErrIndexOutRange
 	}
-	return p.slaves[index], nil
+
+	return p.masters[index], nil
 }
