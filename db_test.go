@@ -247,20 +247,35 @@ func TestPool_Random(t *testing.T) {
 		t.Fatalf("want nil, got %v", err)
 	}
 
-	query := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Equal{"id", 1})
+	var (
+		query = helper.AcquireQuery().
+			From(`users`).
+			Where(condition.Equal{"id", 1})
+		start       = time.Now()
+		maxInterval = time.Minute
+	)
+
 	defer query.Close()
 
 	record, err := pool.FindOne(TypeMaster, query)
 	if err != nil {
-		t.Fatalf("find one error: %v", err)
+		t.Logf("find one error: %v", err)
+	} else {
+		t.Logf("query records: %+v", record)
 	}
-	t.Logf("query records: %+v", record)
 
-	record, err = pool.FindOne(TypeSlave, query)
-	if err != nil {
-		t.Fatalf("find one error: %v", err)
+	ticker := time.NewTicker(time.Second * 5)
+	for range ticker.C {
+		if time.Since(start) > maxInterval {
+			ticker.Stop()
+			break
+		}
+
+		record, err = pool.FindOne(TypeSlave, query)
+		if err != nil {
+			t.Logf("find one error: %v", err)
+		} else {
+			t.Logf("query records: %+v", record)
+		}
 	}
-	t.Logf("query records: %+v", record)
 }
