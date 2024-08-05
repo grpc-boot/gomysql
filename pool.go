@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	"fmt"
 	"golang.org/x/exp/rand"
 	"sync/atomic"
 	"time"
@@ -92,7 +91,6 @@ func (p *Pool) monitor() {
 }
 
 func (p *Pool) checkActive(list []*Db) []int {
-	defer fmt.Println()
 	if len(list) < 2 {
 		return nil
 	}
