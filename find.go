@@ -93,3 +93,44 @@ func FindTimeout(timeout time.Duration, db Executor, q *helper.Query) (records [
 	rows, err := SelectTimeout(timeout, db, q)
 	return Scan(rows, err)
 }
+
+func FindModelsByPoolContext[T Model](ctx context.Context, dbType DbType, model T, pool *Pool, q *helper.Query) ([]T, error) {
+	query, args := q.Sql()
+	rows, err := pool.QueryContext(ctx, dbType, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return ScanModel(model, rows, err)
+}
+
+func FindModelByPoolContext[T Model](ctx context.Context, dbType DbType, model T, pool *Pool, q *helper.Query) (m T, err error) {
+	query, args := q.Sql()
+	rows, err := pool.QueryContext(ctx, dbType, query, args...)
+	if err != nil {
+		return
+	}
+
+	models, err := ScanModel(model, rows, err)
+	if err != nil {
+		return
+	}
+
+	if len(models) == 0 {
+		return
+	}
+
+	return models[0], nil
+}
+
+func FindModelsByPoolTimeout[T Model](timeout time.Duration, dbType DbType, model T, pool *Pool, q *helper.Query) ([]T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return FindModelsByPoolContext(ctx, dbType, model, pool, q)
+}
+
+func FindModelByPoolTimeout[T Model](timeout time.Duration, dbType DbType, model T, pool *Pool, q *helper.Query) (m T, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return FindModelByPoolContext(ctx, dbType, model, pool, q)
+}
