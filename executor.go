@@ -6,8 +6,6 @@ import (
 )
 
 type Executor interface {
-	Prepare(query string) (*sql.Stmt, error)
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
