@@ -345,17 +345,30 @@ func (p *Pool) Close() error {
 	return nil
 }
 
-func (p *Pool) Index(dbType DbType, index int) (*Db, error) {
+func (p *Pool) Rand(dbType DbType) *Db {
 	if dbType == TypeSlave && len(p.slaves) > 0 {
-		if index >= len(p.slaves) {
-			return nil, ErrIndexOutRange
+		if len(p.slaves) == 1 {
+			return p.slaves[0]
 		}
-		return p.slaves[index], nil
+
+		al, _ := p.activeSlaves.Load().([]int)
+		if len(al) == 0 {
+			index := int(p.latestSlave.Load())
+			return p.slaves[index]
+		}
+
+		return p.slaves[al[rand.Intn(len(al))]]
 	}
 
-	if index >= len(p.masters) {
-		return nil, ErrIndexOutRange
+	if len(p.masters) == 1 {
+		return p.masters[0]
 	}
 
-	return p.masters[index], nil
+	al, _ := p.activeMasters.Load().([]int)
+	if len(al) == 0 {
+		index := int(p.latestMaster.Load())
+		return p.masters[index]
+	}
+
+	return p.masters[al[rand.Intn(len(al))]]
 }
