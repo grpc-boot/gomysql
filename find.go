@@ -96,7 +96,7 @@ func FindTimeout(timeout time.Duration, db Executor, q *helper.Query) (records [
 
 func FindModelsByPoolContext[T Model](ctx context.Context, dbType DbType, model T, pool *Pool, q *helper.Query) ([]T, error) {
 	query, args := q.Sql()
-	rows, err := pool.QueryContext(ctx, dbType, query, args...)
+	rows, err := pool.queryContext(ctx, dbType, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func FindModelsByPoolContext[T Model](ctx context.Context, dbType DbType, model 
 
 func FindModelByPoolContext[T Model](ctx context.Context, dbType DbType, model T, pool *Pool, q *helper.Query) (m T, err error) {
 	query, args := q.Sql()
-	rows, err := pool.QueryContext(ctx, dbType, query, args...)
+	rows, err := pool.queryContext(ctx, dbType, query, args...)
 	if err != nil {
 		return
 	}

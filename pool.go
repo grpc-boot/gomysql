@@ -172,24 +172,24 @@ func (p *Pool) exec(dbType DbType, fn func(db *Db) error) (err error) {
 }
 
 func (p *Pool) QueryRow(dbType DbType, query string, args ...any) (row *sql.Row) {
-	return p.QueryRowContext(context.Background(), dbType, query, args...)
+	return p.queryRowContext(context.Background(), dbType, query, args...)
 }
 
-func (p *Pool) QueryRowContext(ctx context.Context, dbType DbType, query string, args ...any) (row *sql.Row) {
+func (p *Pool) queryRowContext(ctx context.Context, dbType DbType, query string, args ...any) (row *sql.Row) {
 	p.exec(dbType, func(db *Db) error {
-		row = db.QueryRowContext(ctx, query, args...)
+		row = db.queryRowContext(ctx, query, args...)
 		return row.Err()
 	})
 	return
 }
 
 func (p *Pool) Exec(query string, args ...any) (result sql.Result, err error) {
-	return p.ExecContext(context.Background(), query, args...)
+	return p.execContext(context.Background(), query, args...)
 }
 
-func (p *Pool) ExecContext(ctx context.Context, query string, args ...any) (result sql.Result, err error) {
+func (p *Pool) execContext(ctx context.Context, query string, args ...any) (result sql.Result, err error) {
 	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.ExecContext(ctx, query, args...)
+		result, err = db.execContext(ctx, query, args...)
 		return err
 	})
 	return
@@ -198,16 +198,16 @@ func (p *Pool) ExecContext(ctx context.Context, query string, args ...any) (resu
 func (p *Pool) ExecTimeout(timeout time.Duration, query string, args ...any) (sql.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return p.ExecContext(ctx, query, args...)
+	return p.execContext(ctx, query, args...)
 }
 
 func (p *Pool) Query(dbType DbType, query string, args ...any) (*sql.Rows, error) {
-	return p.QueryContext(context.Background(), dbType, query, args...)
+	return p.queryContext(context.Background(), dbType, query, args...)
 }
 
-func (p *Pool) QueryContext(ctx context.Context, dbType DbType, query string, args ...any) (rows *sql.Rows, err error) {
+func (p *Pool) queryContext(ctx context.Context, dbType DbType, query string, args ...any) (rows *sql.Rows, err error) {
 	p.exec(dbType, func(db *Db) error {
-		rows, err = db.QueryContext(ctx, query, args...)
+		rows, err = db.queryContext(ctx, query, args...)
 		return err
 	})
 	return
@@ -216,7 +216,7 @@ func (p *Pool) QueryContext(ctx context.Context, dbType DbType, query string, ar
 func (p *Pool) QueryTimeout(timeout time.Duration, dbType DbType, query string, args ...any) (*sql.Rows, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return p.QueryContext(ctx, dbType, query, args...)
+	return p.queryContext(ctx, dbType, query, args...)
 }
 
 func (p *Pool) AcquireQuery() *helper.Query {

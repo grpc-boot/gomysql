@@ -55,39 +55,46 @@ func (db *Db) Pool() *sql.DB {
 }
 
 func (db *Db) QueryRow(query string, args ...any) *sql.Row {
-	return db.QueryRowContext(context.Background(), query, args...)
+	return db.queryRowContext(context.Background(), query, args...)
 }
 
-func (db *Db) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+func (db *Db) queryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return QueryRowContext(ctx, db.pool, query, args...)
 }
 
-func (db *Db) Exec(query string, args ...any) (sql.Result, error) {
-	return db.ExecContext(context.Background(), query, args...)
+func (db *Db) QueryRowTimeout(timeout time.Duration, query string, args ...any) *sql.Row {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return db.queryRowContext(ctx, query, args...)
 }
 
-func (db *Db) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (db *Db) Exec(query string, args ...any) (sql.Result, error) {
+	return db.execContext(context.Background(), query, args...)
+}
+
+func (db *Db) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return ExecContext(ctx, db.pool, query, args...)
 }
 
 func (db *Db) ExecTimeout(timeout time.Duration, query string, args ...any) (sql.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return db.ExecContext(ctx, query, args...)
+	return db.execContext(ctx, query, args...)
 }
 
 func (db *Db) Query(query string, args ...any) (*sql.Rows, error) {
-	return db.QueryContext(context.Background(), query, args...)
+	return db.queryContext(context.Background(), query, args...)
 }
 
-func (db *Db) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (db *Db) queryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return QueryContext(ctx, db.pool, query, args...)
 }
 
 func (db *Db) QueryTimeout(timeout time.Duration, query string, args ...any) (*sql.Rows, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return db.QueryContext(ctx, query, args...)
+	return db.queryContext(ctx, query, args...)
 }
 
 func (db *Db) AcquireQuery() *helper.Query {

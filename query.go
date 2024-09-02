@@ -39,3 +39,10 @@ func QueryRowContext(ctx context.Context, db Executor, query string, args ...any
 
 	return db.QueryRowContext(ctx, query, args...)
 }
+
+func QueryRowTimeout(timeout time.Duration, db Executor, query string, args ...any) *sql.Row {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return QueryRowContext(ctx, db, query, args...)
+}
