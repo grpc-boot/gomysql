@@ -3,7 +3,6 @@ package gomysql
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/grpc-boot/gomysql/helper"
 )
@@ -18,7 +17,12 @@ func InsertContext(ctx context.Context, db Executor, table string, columns helpe
 	return ExecContext(ctx, db, query, args...)
 }
 
-func InsertTimeout(timeout time.Duration, db Executor, table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
+func InsertWithRowsAffectedContext(ctx context.Context, db Executor, table string, columns helper.Columns, rows ...helper.Row) (rowsAffected int64, err error) {
 	query, args := helper.Insert(table, columns, rows, false)
-	return ExecTimeout(timeout, db, query, args...)
+	return ExecWithRowsAffectedContext(ctx, db, query, args...)
+}
+
+func InsertWithInsertedIdContext(ctx context.Context, db Executor, table string, columns helper.Columns, row helper.Row) (id int64, err error) {
+	query, args := helper.Insert(table, columns, []helper.Row{row}, false)
+	return ExecWithInsertedIdContext(ctx, db, query, args...)
 }

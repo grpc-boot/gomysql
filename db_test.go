@@ -33,21 +33,25 @@ func init() {
 	SetLogger(func(query string, args ...any) {
 		fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
 	})
+
+	SetErrorLog(func(err error, query string, args ...any) {
+		fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
+	})
 }
 
 func TestDb_Exec(t *testing.T) {
-	res, err := db.Exec("CREATE TABLE IF NOT EXISTS `users` " +
-		"(`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键id'," +
-		"`user_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '登录名'," +
-		"`nickname` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '昵称'," +
-		"`passwd` char(32) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '密码'," +
-		"`email` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '邮箱'," +
-		"`mobile` varchar(16) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '手机号'," +
-		"`is_on` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '账号状态(1已启用，0已禁用)'," +
-		"`created_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT '创建时间'," +
-		"`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
-		"`last_login_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上次登录时间'," +
-		"`remark` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '备注'," +
+	res, err := Exec(db.Executor(), "CREATE TABLE IF NOT EXISTS `users` "+
+		"(`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键id',"+
+		"`user_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '登录名',"+
+		"`nickname` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '昵称',"+
+		"`passwd` char(32) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '密码',"+
+		"`email` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '邮箱',"+
+		"`mobile` varchar(16) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '' COMMENT '手机号',"+
+		"`is_on` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '账号状态(1已启用，0已禁用)',"+
+		"`created_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT '创建时间',"+
+		"`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',"+
+		"`last_login_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上次登录时间',"+
+		"`remark` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT '备注',"+
 		"PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;")
 	if err != nil {
 		t.Fatalf("create table failed with error: %v\n", err)
@@ -58,7 +62,8 @@ func TestDb_Exec(t *testing.T) {
 }
 
 func TestDb_Insert(t *testing.T) {
-	res, err := db.Insert(
+	id, err := db.InsertWithInsertedIdContext(
+		context.Background(),
 		`users`,
 		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
 		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
@@ -67,13 +72,12 @@ func TestDb_Insert(t *testing.T) {
 		t.Fatalf("insert data failed with error: %v\n", err)
 	}
 
-	id, _ := res.LastInsertId()
 	t.Logf("insert data with id: %d\n", id)
 }
 
 func TestDb_Update(t *testing.T) {
-	res, err := db.UpdateTimeout(
-		time.Second,
+	rows, err := db.UpdateWithRowsAffectedContext(
+		context.Background(),
 		`users`,
 		`last_login_at=?`,
 		condition.Equal{Field: "id", Value: 1},
@@ -84,14 +88,13 @@ func TestDb_Update(t *testing.T) {
 		t.Fatalf("update data failed with error: %v\n", err)
 	}
 
-	count, _ := res.RowsAffected()
-	t.Logf("update data rows affected: %d", count)
+	t.Logf("update data rows affected: %d", rows)
 }
 
 func TestDb_Delete(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	res, err := db.DeleteContext(
+	rows, err := db.DeleteWithRowsAffectedContext(
 		ctx,
 		`users`,
 		condition.Equal{Field: "id", Value: 1},
@@ -100,9 +103,7 @@ func TestDb_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("delete data failed with error: %v\n", err)
 	}
-
-	count, _ := res.RowsAffected()
-	t.Logf("delete data rows affected: %d", count)
+	t.Logf("delete data rows affected: %d", rows)
 }
 
 func TestDb_Find(t *testing.T) {

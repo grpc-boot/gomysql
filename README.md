@@ -50,12 +50,13 @@ package main
 import (
 	"testing"
 
+    "github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 func TestDb_Exec(t *testing.T) {
-	res, err := db.Exec("CREATE TABLE IF NOT EXISTS `users` " +
+	res, err := gomysql.Exec(db.Executor(), "CREATE TABLE IF NOT EXISTS `users` " +
 		"(`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键id'," +
 		"`user_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '' COMMENT '登录名'," +
 		"`nickname` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '昵称'," +
@@ -83,8 +84,10 @@ func TestDb_Exec(t *testing.T) {
 package main
 
 import (
+  "context"
   "fmt"
   "log"
+  "strings"
   "time"
 
   "github.com/grpc-boot/gomysql"
@@ -113,24 +116,27 @@ func init() {
   gomysql.SetLogger(func(query string, args ...any) {
     fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
   })
+
+  gomysql.SetErrorLog(func(err error, query string, args ...any) {
+    fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
+  })
 }
 
 func main() {
   current := time.Now()
-  res, err := db.Insert(
-    DefaultUserModel.TableName(),
-    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at", "last_login_at"},
-    helper.Row{"uname", "nickName", "passwd", 1, current.Unix(), current.Format(time.DateTime), current.Format(time.DateTime)},
+  id, err := db.InsertWithInsertedIdContext(
+    context.Background(),
+    `users`,
+    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
+    helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
   )
-
   if err != nil {
-    panic(err)
+    t.Fatalf("insert data failed with error: %v\n", err)
   }
 
-  id, _ := res.LastInsertId()
-  fmt.Printf("insert id: %d\n", id)
+  t.Logf("insert data with id: %d\n", id)
 
-  user, err := gomysql.FindById(db.Pool(), id, DefaultUserModel)
+  user, err := gomysql.FindById(db.Executor(), id, DefaultUserModel)
   if err != nil {
     panic(err)
   }
@@ -261,6 +267,7 @@ func TestDb_Find(t *testing.T) {
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -270,17 +277,17 @@ import (
 )
 
 func TestDb_Insert(t *testing.T) {
-	res, err := db.Insert(
-		`users`,
-		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
-		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
-	)
-	if err != nil {
-		t.Fatalf("insert data failed with error: %v\n", err)
-	}
+  id, err := db.InsertWithInsertedIdContext(
+    context.Background(),
+    `users`,
+    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
+    helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
+  )
+  if err != nil {
+    t.Fatalf("insert data failed with error: %v\n", err)
+  }
 
-	id, _ := res.LastInsertId()
-	t.Logf("insert data with id: %d\n", id)
+  t.Logf("insert data with id: %d\n", id)
 }
 ```
 
@@ -290,6 +297,7 @@ func TestDb_Insert(t *testing.T) {
 package main
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -298,20 +306,19 @@ import (
 )
 
 func TestDb_Update(t *testing.T) {
-	res, err := db.UpdateTimeout(
-		time.Second,
-		`users`,
-		`last_login_at=?`,
-		condition.Equal{Field: "id", Value: 1},
-		time.Now().Format(time.DateTime),
-	)
+  rows, err := db.UpdateWithRowsAffectedContext(
+    context.Background(),
+    `users`,
+    `last_login_at=?`,
+    condition.Equal{Field: "id", Value: 1},
+    time.Now().Format(time.DateTime),
+  )
 
-	if err != nil {
-		t.Fatalf("update data failed with error: %v\n", err)
-	}
+  if err != nil {
+    t.Fatalf("update data failed with error: %v\n", err)
+  }
 
-	count, _ := res.RowsAffected()
-	t.Logf("update data rows affected: %d", count)
+  t.Logf("update data rows affected: %d", rows)
 }
 ```
 
@@ -330,20 +337,18 @@ import (
 )
 
 func TestDb_Delete(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	res, err := db.DeleteContext(
-		ctx,
-		`users`,
-		condition.Equal{Field: "id", Value: 1},
-	)
+  ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+  defer cancel()
+  rows, err := db.DeleteWithRowsAffectedContext(
+    ctx,
+    `users`,
+    condition.Equal{Field: "id", Value: 1},
+  )
 
-	if err != nil {
-		t.Fatalf("delete data failed with error: %v\n", err)
-	}
-
-	count, _ := res.RowsAffected()
-	t.Logf("delete data rows affected: %d", count)
+  if err != nil {
+    t.Fatalf("delete data failed with error: %v\n", err)
+  }
+  t.Logf("delete data rows affected: %d", rows)
 }
 ```
 
@@ -494,6 +499,11 @@ func init() {
   // 输出sql和参数到标准输入，修改func定制自己的日志，方便分析sql
   gomysql.SetLogger(func(query string, args ...any) {
     fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
+  })
+
+  // 记录错误日志
+  gomysql.SetErrorLog(func(err error, query string, args ...any) {
+    fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
   })
 }
 

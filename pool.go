@@ -171,38 +171,12 @@ func (p *Pool) exec(dbType DbType, fn func(db *Db) error) (err error) {
 	return
 }
 
-func (p *Pool) QueryRow(dbType DbType, query string, args ...any) (row *sql.Row) {
-	return p.queryRowContext(context.Background(), dbType, query, args...)
-}
-
 func (p *Pool) queryRowContext(ctx context.Context, dbType DbType, query string, args ...any) (row *sql.Row) {
 	p.exec(dbType, func(db *Db) error {
 		row = db.queryRowContext(ctx, query, args...)
 		return row.Err()
 	})
 	return
-}
-
-func (p *Pool) Exec(query string, args ...any) (result sql.Result, err error) {
-	return p.execContext(context.Background(), query, args...)
-}
-
-func (p *Pool) execContext(ctx context.Context, query string, args ...any) (result sql.Result, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.execContext(ctx, query, args...)
-		return err
-	})
-	return
-}
-
-func (p *Pool) ExecTimeout(timeout time.Duration, query string, args ...any) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.execContext(ctx, query, args...)
-}
-
-func (p *Pool) Query(dbType DbType, query string, args ...any) (*sql.Rows, error) {
-	return p.queryContext(context.Background(), dbType, query, args...)
 }
 
 func (p *Pool) queryContext(ctx context.Context, dbType DbType, query string, args ...any) (rows *sql.Rows, err error) {
@@ -213,10 +187,12 @@ func (p *Pool) queryContext(ctx context.Context, dbType DbType, query string, ar
 	return
 }
 
-func (p *Pool) QueryTimeout(timeout time.Duration, dbType DbType, query string, args ...any) (*sql.Rows, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.queryContext(ctx, dbType, query, args...)
+func (p *Pool) execContext(ctx context.Context, query string, args ...any) (result sql.Result, err error) {
+	p.exec(TypeMaster, func(db *Db) error {
+		result, err = db.execContext(ctx, query, args...)
+		return err
+	})
+	return
 }
 
 func (p *Pool) AcquireQuery() *helper.Query {
@@ -271,10 +247,13 @@ func (p *Pool) InsertContext(ctx context.Context, table string, columns helper.C
 	return
 }
 
-func (p *Pool) InsertTimeout(timeout time.Duration, table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.InsertContext(ctx, table, columns, rows...)
+func (p *Pool) InsertWithInsertedIdContext(ctx context.Context, table string, columns helper.Columns, row helper.Row) (id int64, err error) {
+	p.exec(TypeMaster, func(db *Db) error {
+		id, err = db.InsertWithInsertedIdContext(ctx, table, columns, row)
+		return err
+	})
+
+	return
 }
 
 func (p *Pool) Update(table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
@@ -289,10 +268,12 @@ func (p *Pool) UpdateContext(ctx context.Context, table string, setter string, w
 	return
 }
 
-func (p *Pool) UpdateTimeout(timeout time.Duration, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.UpdateContext(ctx, table, setter, where, setterArgs...)
+func (p *Pool) UpdateWithRowsAffectedContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (rows int64, err error) {
+	p.exec(TypeMaster, func(db *Db) error {
+		rows, err = db.UpdateWithRowsAffectedContext(ctx, table, setter, where, setterArgs...)
+		return err
+	})
+	return
 }
 
 func (p *Pool) Delete(table string, where condition.Condition) (sql.Result, error) {
@@ -307,10 +288,12 @@ func (p *Pool) DeleteContext(ctx context.Context, table string, where condition.
 	return
 }
 
-func (p *Pool) DeleteTimeout(timeout time.Duration, table string, where condition.Condition) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.DeleteContext(ctx, table, where)
+func (p *Pool) DeleteWithRowsAffectedContext(ctx context.Context, table string, where condition.Condition) (rows int64, err error) {
+	p.exec(TypeMaster, func(db *Db) error {
+		rows, err = db.DeleteWithRowsAffectedContext(ctx, table, where)
+		return err
+	})
+	return
 }
 
 func (p *Pool) Begin() (tx *sql.Tx, err error) {
@@ -371,4 +354,13 @@ func (p *Pool) Rand(dbType DbType) *Db {
 	}
 
 	return p.masters[al[rand.Intn(len(al))]]
+}
+
+func (p *Pool) RandExecutor(dbType DbType) Executor {
+	db := p.Rand(dbType)
+	if db != nil {
+		return db.Executor()
+	}
+
+	return nil
 }

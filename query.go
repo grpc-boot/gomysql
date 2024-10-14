@@ -3,46 +3,43 @@ package gomysql
 import (
 	"context"
 	"database/sql"
-	"time"
 )
 
 func Query(db Executor, query string, args ...any) (*sql.Rows, error) {
 	return QueryContext(context.Background(), db, query, args...)
 }
 
-func QueryContext(ctx context.Context, db Executor, query string, args ...any) (*sql.Rows, error) {
+func QueryContext(ctx context.Context, db Executor, query string, args ...any) (rows *sql.Rows, err error) {
 	defer func() {
-		if logger != nil {
+		if err != nil && errorLog != nil {
+			errorLog(err, query, args...)
+		} else if logger != nil {
 			logger(query, args...)
 		}
 	}()
 
-	return db.QueryContext(ctx, query, args...)
-}
-
-func QueryTimeout(timeout time.Duration, db Executor, query string, args ...any) (*sql.Rows, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return QueryContext(ctx, db, query, args...)
+	rows, err = db.QueryContext(ctx, query, args...)
+	return rows, err
 }
 
 func QueryRow(db Executor, query string, args ...any) *sql.Row {
 	return QueryRowContext(context.Background(), db, query, args...)
 }
 
-func QueryRowContext(ctx context.Context, db Executor, query string, args ...any) *sql.Row {
+func QueryRowContext(ctx context.Context, db Executor, query string, args ...any) (row *sql.Row) {
+	var err error
 	defer func() {
-		if logger != nil {
+		if err != nil && errorLog != nil {
+			errorLog(err, query, args...)
+		} else if logger != nil {
 			logger(query, args...)
 		}
 	}()
 
-	return db.QueryRowContext(ctx, query, args...)
-}
+	row = db.QueryRowContext(ctx, query, args...)
+	if row != nil {
+		err = row.Err()
+	}
 
-func QueryRowTimeout(timeout time.Duration, db Executor, query string, args ...any) *sql.Row {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	return QueryRowContext(ctx, db, query, args...)
+	return
 }

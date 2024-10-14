@@ -3,7 +3,6 @@ package gomysql
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
@@ -19,7 +18,7 @@ func DeleteContext(ctx context.Context, db Executor, table string, condition con
 	return ExecContext(ctx, db, query, args...)
 }
 
-func DeleteTimeout(timeout time.Duration, db Executor, table string, condition condition.Condition) (sql.Result, error) {
+func DeleteWithRowsAffectedContext(ctx context.Context, db Executor, table string, condition condition.Condition) (rows int64, err error) {
 	query, args := helper.Delete(table, condition)
-	return ExecTimeout(timeout, db, query, args...)
+	return ExecWithRowsAffectedContext(ctx, db, query, args...)
 }

@@ -54,47 +54,24 @@ func (db *Db) Pool() *sql.DB {
 	return db.pool
 }
 
-func (db *Db) QueryRow(query string, args ...any) *sql.Row {
-	return db.queryRowContext(context.Background(), query, args...)
+func (db *Db) Executor() Executor {
+	return db.pool
 }
 
 func (db *Db) queryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return QueryRowContext(ctx, db.pool, query, args...)
 }
 
-func (db *Db) QueryRowTimeout(timeout time.Duration, query string, args ...any) *sql.Row {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	return db.queryRowContext(ctx, query, args...)
-}
-
-func (db *Db) Exec(query string, args ...any) (sql.Result, error) {
-	return db.execContext(context.Background(), query, args...)
+func (db *Db) queryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return QueryContext(ctx, db.pool, query, args...)
 }
 
 func (db *Db) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return ExecContext(ctx, db.pool, query, args...)
 }
 
-func (db *Db) ExecTimeout(timeout time.Duration, query string, args ...any) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return db.execContext(ctx, query, args...)
-}
-
-func (db *Db) Query(query string, args ...any) (*sql.Rows, error) {
-	return db.queryContext(context.Background(), query, args...)
-}
-
-func (db *Db) queryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return QueryContext(ctx, db.pool, query, args...)
-}
-
-func (db *Db) QueryTimeout(timeout time.Duration, query string, args ...any) (*sql.Rows, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return db.queryContext(ctx, query, args...)
+func (db *Db) execWithRowsAffectedContext(query string, args ...any) (rows int64, err error) {
+	return ExecWithRowsAffectedContext(context.Background(), db.pool, query, args...)
 }
 
 func (db *Db) AcquireQuery() *helper.Query {
@@ -137,10 +114,14 @@ func (db *Db) InsertContext(ctx context.Context, table string, columns helper.Co
 	return InsertContext(ctx, db.pool, table, columns, rows...)
 }
 
-func (db *Db) InsertTimeout(timeout time.Duration, table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
+func (db *Db) InsertWithInsertedIdContext(ctx context.Context, table string, columns helper.Columns, row helper.Row) (id int64, err error) {
+	return InsertWithInsertedIdContext(ctx, db.pool, table, columns, row)
+}
+
+func (db *Db) InsertWithInsertedIdTimeout(timeout time.Duration, table string, columns helper.Columns, row helper.Row) (id int64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return db.InsertContext(ctx, table, columns, rows...)
+	return db.InsertWithInsertedIdContext(ctx, table, columns, row)
 }
 
 func (db *Db) Update(table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
@@ -151,10 +132,8 @@ func (db *Db) UpdateContext(ctx context.Context, table string, setter string, wh
 	return UpdateContext(ctx, db.pool, table, setter, where, setterArgs...)
 }
 
-func (db *Db) UpdateTimeout(timeout time.Duration, table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return db.UpdateContext(ctx, table, setter, where, setterArgs...)
+func (db *Db) UpdateWithRowsAffectedContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (rows int64, err error) {
+	return UpdateWithRowsAffectedContext(ctx, db.pool, table, setter, where, setterArgs...)
 }
 
 func (db *Db) Delete(table string, where condition.Condition) (sql.Result, error) {
@@ -165,16 +144,32 @@ func (db *Db) DeleteContext(ctx context.Context, table string, where condition.C
 	return DeleteContext(ctx, db.pool, table, where)
 }
 
-func (db *Db) DeleteTimeout(timeout time.Duration, table string, where condition.Condition) (sql.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return db.DeleteContext(ctx, table, where)
+func (db *Db) DeleteWithRowsAffectedContext(ctx context.Context, table string, where condition.Condition) (rows int64, err error) {
+	return DeleteWithRowsAffectedContext(ctx, db.pool, table, where)
 }
 
-func (db *Db) Begin() (*sql.Tx, error) {
-	return db.pool.Begin()
+func (db *Db) Begin() (tx *sql.Tx, err error) {
+	tx, err = db.pool.Begin()
+	if err != nil {
+		if err != nil && errorLog != nil {
+			errorLog(err, "BEGIN")
+		} else if logger != nil {
+			logger("BEGIN")
+		}
+	}
+
+	return
 }
 
-func (db *Db) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	return db.pool.BeginTx(ctx, opts)
+func (db *Db) BeginTx(ctx context.Context, opts *sql.TxOptions) (tx *sql.Tx, err error) {
+	tx, err = db.pool.BeginTx(ctx, opts)
+	if err != nil {
+		if err != nil && errorLog != nil {
+			errorLog(err, "BEGIN")
+		} else if logger != nil {
+			logger("BEGIN")
+		}
+	}
+
+	return
 }

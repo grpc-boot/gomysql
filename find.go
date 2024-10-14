@@ -11,22 +11,11 @@ func FindModels[T Model](model T, db Executor, q *helper.Query) ([]T, error) {
 	return FindModelsContext(context.Background(), model, db, q)
 }
 
-func FindModel[T Model](model T, db Executor, q *helper.Query) (T, error) {
-	return FindModelContext(context.Background(), model, db, q)
-}
-
 func FindModelsTimeout[T Model](timeout time.Duration, model T, db Executor, q *helper.Query) ([]T, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	return FindModelsContext(ctx, model, db, q)
-}
-
-func FindModelTimeout[T Model](timeout time.Duration, model T, db Executor, q *helper.Query) (T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	return FindModelContext(ctx, model, db, q)
 }
 
 func FindModelsContext[T Model](ctx context.Context, model T, db Executor, q *helper.Query) ([]T, error) {
@@ -38,22 +27,27 @@ func FindModelsContext[T Model](ctx context.Context, model T, db Executor, q *he
 	return ScanModel(model, rows, err)
 }
 
+func FindModel[T Model](model T, db Executor, q *helper.Query) (T, error) {
+	return FindModelContext(context.Background(), model, db, q)
+}
+
+func FindModelTimeout[T Model](timeout time.Duration, model T, db Executor, q *helper.Query) (T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return FindModelContext(ctx, model, db, q)
+}
+
 func FindModelContext[T Model](ctx context.Context, model T, db Executor, q *helper.Query) (m T, err error) {
-	rows, err := SelectContext(ctx, db, q)
+	models, err := FindModelsContext(ctx, model, db, q)
 	if err != nil {
 		return
 	}
 
-	models, err := ScanModel(model, rows, err)
-	if err != nil {
-		return
+	if len(models) > 0 {
+		return models[0], nil
 	}
-
-	if len(models) == 0 {
-		return
-	}
-
-	return models[0], nil
+	return
 }
 
 func FindOne(db Executor, q *helper.Query) (Record, error) {
@@ -80,8 +74,7 @@ func FindOneTimeout(timeout time.Duration, db Executor, q *helper.Query) (Record
 }
 
 func Find(db Executor, q *helper.Query) (records []Record, err error) {
-	rows, err := Select(db, q)
-	return Scan(rows, err)
+	return FindContext(context.Background(), db, q)
 }
 
 func FindContext(ctx context.Context, db Executor, q *helper.Query) (records []Record, err error) {
@@ -90,8 +83,10 @@ func FindContext(ctx context.Context, db Executor, q *helper.Query) (records []R
 }
 
 func FindTimeout(timeout time.Duration, db Executor, q *helper.Query) (records []Record, err error) {
-	rows, err := SelectTimeout(timeout, db, q)
-	return Scan(rows, err)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return FindContext(ctx, db, q)
 }
 
 func FindModelsByPoolContext[T Model](ctx context.Context, dbType DbType, model T, pool *Pool, q *helper.Query) ([]T, error) {
