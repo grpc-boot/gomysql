@@ -62,8 +62,21 @@ func TestDb_Exec(t *testing.T) {
 }
 
 func TestDb_Insert(t *testing.T) {
-	id, err := db.InsertWithInsertedIdContext(
-		context.Background(),
+	res, err := db.Insert(
+		`users`,
+		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
+		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
+	)
+
+	if err != nil {
+		t.Fatalf("insert data failed with error: %v\n", err)
+	}
+
+	id, _ := res.LastInsertId()
+	t.Logf("insert data with id: %d\n", id)
+
+	id, err = db.InsertWithInsertedIdTimeout(
+		time.Second,
 		`users`,
 		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
 		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
@@ -76,11 +89,25 @@ func TestDb_Insert(t *testing.T) {
 }
 
 func TestDb_Update(t *testing.T) {
-	rows, err := db.UpdateWithRowsAffectedContext(
+	res, err := db.Update(
+		`users`,
+		`last_login_at=?`,
+		condition.Equal{Field: "id", Value: 2},
+		time.Now().Format(time.DateTime),
+	)
+
+	if err != nil {
+		t.Fatalf("update data failed with error: %v\n", err)
+	}
+
+	rows, _ := res.RowsAffected()
+	t.Logf("update data rows affected: %d", rows)
+
+	rows, err = db.UpdateWithRowsAffectedContext(
 		context.Background(),
 		`users`,
 		`last_login_at=?`,
-		condition.Equal{Field: "id", Value: 1},
+		condition.Equal{Field: "id", Value: 3},
 		time.Now().Format(time.DateTime),
 	)
 
@@ -92,9 +119,17 @@ func TestDb_Update(t *testing.T) {
 }
 
 func TestDb_Delete(t *testing.T) {
+	res, err := db.Delete(`users`, condition.Equal{Field: "id", Value: 1})
+	if err != nil {
+		t.Fatalf("delete data failed with error: %v\n", err)
+	}
+
+	rows, _ := res.RowsAffected()
+	t.Logf("delete data rows affected: %d", rows)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	rows, err := db.DeleteWithRowsAffectedContext(
+	rows, err = db.DeleteWithRowsAffectedContext(
 		ctx,
 		`users`,
 		condition.Equal{Field: "id", Value: 1},
