@@ -14,6 +14,7 @@ go语言实现的mysql帮助库
   - [Transaction](#Transaction)
   - [Read-Write-Splitting](#Read-Write-Splitting) 
   - [Sql-Log](#Sql-Log) 
+  - [测试](blob/main/db_test.go)
 
 #### 实例化db
 
