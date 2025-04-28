@@ -90,6 +90,10 @@ func (q *Query) Limit(limit int64) *Query {
 }
 
 func (q *Query) Close() {
+	if q == nil {
+		return
+	}
+
 	queryPool.Put(q.reset())
 }
 
@@ -133,7 +137,7 @@ func (q *Query) Sql() (sql string, args []any) {
 	return sqlBuffer.String(), args
 }
 
-func (q *Query) Count(field string) (sql string, args []any) {
+func (q *Query) CountSql(field string) (sql string, args []any) {
 	var (
 		buffer   strings.Builder
 		whereStr string
@@ -143,7 +147,7 @@ func (q *Query) Count(field string) (sql string, args []any) {
 		whereStr, args = q.where.Build()
 	}
 
-	length := 13 + len(field) + 7 + len(q.table) + len(whereStr)
+	length := 13 + len(field) + 19 + len(q.table) + len(whereStr)
 	if whereStr != "" {
 		length += 7
 	}
@@ -152,7 +156,7 @@ func (q *Query) Count(field string) (sql string, args []any) {
 
 	buffer.WriteString(`SELECT COUNT(`)
 	buffer.WriteString(field)
-	buffer.WriteString(`) FROM `)
+	buffer.WriteString(`) AS countVal FROM `)
 	buffer.WriteString(q.table)
 
 	if whereStr != "" {
@@ -163,7 +167,7 @@ func (q *Query) Count(field string) (sql string, args []any) {
 	return buffer.String(), args
 }
 
-func (q *Query) Sum(field string) (sql string, args []any) {
+func (q *Query) SumSql(field string) (sql string, args []any) {
 	var (
 		buffer   strings.Builder
 		whereStr string
@@ -173,7 +177,7 @@ func (q *Query) Sum(field string) (sql string, args []any) {
 		whereStr, args = q.where.Build()
 	}
 
-	length := 11 + len(field) + 7 + len(q.table) + len(whereStr)
+	length := 11 + len(field) + 17 + len(q.table) + len(whereStr)
 	if whereStr != "" {
 		length += 7
 	}
@@ -182,7 +186,7 @@ func (q *Query) Sum(field string) (sql string, args []any) {
 
 	buffer.WriteString(`SELECT SUM(`)
 	buffer.WriteString(field)
-	buffer.WriteString(`) FROM `)
+	buffer.WriteString(`) AS sumVal FROM `)
 	buffer.WriteString(q.table)
 
 	if whereStr != "" {
@@ -193,7 +197,7 @@ func (q *Query) Sum(field string) (sql string, args []any) {
 	return buffer.String(), args
 }
 
-func (q *Query) Max(field string) (sql string, args []any) {
+func (q *Query) MaxSql(field string) (sql string, args []any) {
 	var (
 		buffer   strings.Builder
 		whereStr string
@@ -203,7 +207,7 @@ func (q *Query) Max(field string) (sql string, args []any) {
 		whereStr, args = q.where.Build()
 	}
 
-	length := 11 + len(field) + 7 + len(q.table) + len(whereStr)
+	length := 11 + len(field) + 17 + len(q.table) + len(whereStr)
 	if whereStr != "" {
 		length += 7
 	}
@@ -212,7 +216,7 @@ func (q *Query) Max(field string) (sql string, args []any) {
 
 	buffer.WriteString(`SELECT Max(`)
 	buffer.WriteString(field)
-	buffer.WriteString(`) FROM `)
+	buffer.WriteString(`) AS maxVal FROM `)
 	buffer.WriteString(q.table)
 
 	if whereStr != "" {
@@ -223,7 +227,7 @@ func (q *Query) Max(field string) (sql string, args []any) {
 	return buffer.String(), args
 }
 
-func (q *Query) Min(field string) (sql string, args []any) {
+func (q *Query) MinSql(field string) (sql string, args []any) {
 	var (
 		buffer   strings.Builder
 		whereStr string
@@ -233,7 +237,7 @@ func (q *Query) Min(field string) (sql string, args []any) {
 		whereStr, args = q.where.Build()
 	}
 
-	length := 11 + len(field) + 7 + len(q.table) + len(whereStr)
+	length := 11 + len(field) + 17 + len(q.table) + len(whereStr)
 	if whereStr != "" {
 		length += 7
 	}
@@ -242,7 +246,7 @@ func (q *Query) Min(field string) (sql string, args []any) {
 
 	buffer.WriteString(`SELECT Min(`)
 	buffer.WriteString(field)
-	buffer.WriteString(`) FROM `)
+	buffer.WriteString(`) AS minVal FROM `)
 	buffer.WriteString(q.table)
 
 	if whereStr != "" {
@@ -253,7 +257,7 @@ func (q *Query) Min(field string) (sql string, args []any) {
 	return buffer.String(), args
 }
 
-func (q *Query) Avg(field string) (sql string, args []any) {
+func (q *Query) AvgSql(field string) (sql string, args []any) {
 	var (
 		buffer   strings.Builder
 		whereStr string
@@ -263,7 +267,7 @@ func (q *Query) Avg(field string) (sql string, args []any) {
 		whereStr, args = q.where.Build()
 	}
 
-	length := 11 + len(field) + 7 + len(q.table) + len(whereStr)
+	length := 11 + len(field) + 17 + len(q.table) + len(whereStr)
 	if whereStr != "" {
 		length += 7
 	}
@@ -272,7 +276,7 @@ func (q *Query) Avg(field string) (sql string, args []any) {
 
 	buffer.WriteString(`SELECT Avg(`)
 	buffer.WriteString(field)
-	buffer.WriteString(`) FROM `)
+	buffer.WriteString(`) AS avgVal FROM `)
 	buffer.WriteString(q.table)
 
 	if whereStr != "" {

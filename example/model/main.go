@@ -31,11 +31,16 @@ func init() {
 	gomysql.SetLogger(func(query string, args ...any) {
 		fmt.Printf("%s exec sql: %s args: %+v\n", time.Now().Format(time.DateTime), query, args)
 	})
+
+	gomysql.SetErrorLog(func(err error, query string, args ...any) {
+		fmt.Printf("%s exec sql: %s args: %+v with error: %v\n", time.Now().Format(time.DateTime), query, args, err)
+	})
 }
 
 func main() {
 	current := time.Now()
-	res, err := db.Insert(
+	res, err := gomysql.Insert(
+		db.Executor(),
 		DefaultUserModel.TableName(),
 		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at", "last_login_at"},
 		helper.Row{"uname", "nickName", "passwd", 1, current.Unix(), current.Format(time.DateTime), current.Format(time.DateTime)},

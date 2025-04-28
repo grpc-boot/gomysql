@@ -4,17 +4,42 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/grpc-boot/gomysql/condition"
+	"github.com/grpc-boot/gomysql/filter"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 var (
-	db *Db
+	db          *Db
+	defaultUser = &User{}
 )
+
+type User struct {
+	Id       int64  `json:"id"`
+	UserName string `json:"userName"`
+}
+
+func (u *User) PrimaryKey() string {
+	return `id`
+}
+
+func (u *User) TableName(args ...any) string {
+	return `users`
+}
+
+func (u *User) NewModel() Model {
+	return &User{}
+}
+
+func (u *User) Assemble(br BytesRecord) {
+	u.Id = br.ToInt64("id")
+	u.UserName = br.String("user_name")
+}
 
 func init() {
 	var err error
@@ -35,7 +60,7 @@ func init() {
 	})
 
 	SetErrorLog(func(err error, query string, args ...any) {
-		fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
+		fmt.Printf("%s exec sql: %s args: %+v with error: %v\n", time.Now().Format(time.DateTime), query, args, err)
 	})
 }
 
@@ -61,8 +86,51 @@ func TestDb_Exec(t *testing.T) {
 	t.Logf("rows affected: %d error: %v\n", count, err)
 }
 
+func TestPrepare(t *testing.T) {
+	_, err := Prepare(db.Executor(), "SELECT * FROM users")
+	if err != nil {
+		t.Fatalf("prepare query failed with error: %v\n", err)
+	}
+}
+
+func TestScrollFilterWithIdContext(t *testing.T) {
+	var caseList = []struct {
+		name string
+		f    filter.Scroll
+	}{
+		{
+			name: "id降序",
+			f: filter.Scroll{
+				PageSize: 30,
+			},
+		},
+		{
+			name: "id升序，大于等于34",
+			f: filter.Scroll{
+				Filters: map[string]filter.Filter{},
+				Sorts: filter.SortItem{
+					Field: "id",
+				},
+				Cursor:   "34",
+				PageSize: 30,
+			},
+		},
+	}
+
+	for _, cs := range caseList {
+		t.Run(cs.name, func(t *testing.T) {
+			hasMore, last, rows, err := ScrollFilterWithIdTimeout(time.Second, &cs.f, math.MaxInt64, defaultUser, db.Executor())
+			t.Logf("hasMore: %v last: %v rows: %v error: %v", hasMore, last, rows, err)
+			if err != nil {
+				t.Fatalf("query failed with error: %v\n", err)
+			}
+		})
+	}
+}
+
 func TestDb_Insert(t *testing.T) {
-	res, err := db.Insert(
+	res, err := Insert(
+		db.Executor(),
 		`users`,
 		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
 		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
@@ -75,8 +143,9 @@ func TestDb_Insert(t *testing.T) {
 	id, _ := res.LastInsertId()
 	t.Logf("insert data with id: %d\n", id)
 
-	id, err = db.InsertWithInsertedIdTimeout(
+	id, err = InsertWithInsertedIdTimeout(
 		time.Second,
+		db.Executor(),
 		`users`,
 		helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
 		helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
@@ -89,7 +158,8 @@ func TestDb_Insert(t *testing.T) {
 }
 
 func TestDb_Update(t *testing.T) {
-	res, err := db.Update(
+	res, err := Update(
+		db.Executor(),
 		`users`,
 		`last_login_at=?`,
 		condition.Equal{Field: "id", Value: 2},
@@ -103,8 +173,9 @@ func TestDb_Update(t *testing.T) {
 	rows, _ := res.RowsAffected()
 	t.Logf("update data rows affected: %d", rows)
 
-	rows, err = db.UpdateWithRowsAffectedContext(
+	rows, err = UpdateWithRowsAffectedContext(
 		context.Background(),
+		db.Executor(),
 		`users`,
 		`last_login_at=?`,
 		condition.Equal{Field: "id", Value: 3},
@@ -119,7 +190,7 @@ func TestDb_Update(t *testing.T) {
 }
 
 func TestDb_Delete(t *testing.T) {
-	res, err := db.Delete(`users`, condition.Equal{Field: "id", Value: 1})
+	res, err := Delete(db.Executor(), `users`, condition.Equal{Field: "id", Value: 1})
 	if err != nil {
 		t.Fatalf("delete data failed with error: %v\n", err)
 	}
@@ -129,8 +200,9 @@ func TestDb_Delete(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	rows, err = db.DeleteWithRowsAffectedContext(
+	rows, err = DeleteWithRowsAffectedContext(
 		ctx,
+		db.Executor(),
 		`users`,
 		condition.Equal{Field: "id", Value: 1},
 	)
@@ -149,7 +221,7 @@ func TestDb_Find(t *testing.T) {
 
 	defer query.Close()
 
-	record, err := db.FindOne(query)
+	record, err := FindOne(db.Executor(), query)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
@@ -161,7 +233,7 @@ func TestDb_Find(t *testing.T) {
 		Where(condition.In[int]{"id", []int{1, 2}})
 	defer query1.Close()
 
-	records, err := db.FindTimeout(time.Second*2, query1)
+	records, err := FindTimeout(time.Second*2, db.Executor(), query1)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
@@ -176,7 +248,7 @@ func TestDb_Find(t *testing.T) {
 		})
 	defer query2.Close()
 
-	records, err = db.FindTimeout(time.Second*2, query2)
+	records, err = FindTimeout(time.Second*2, db.Executor(), query2)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
@@ -194,45 +266,11 @@ func TestDb_Find(t *testing.T) {
 		})
 	defer query3.Close()
 
-	records, err = db.FindTimeout(time.Second*2, query3)
+	records, err = FindTimeout(time.Second*2, db.Executor(), query3)
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
 	t.Logf("records: %+v\n", records)
-}
-
-func TestDb_BeginTx(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatalf("begin failed with error: %v", err)
-	}
-
-	query := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Equal{"id", 1})
-	defer query.Close()
-	records, err := Find(tx, query)
-	if err != nil {
-		tx.Rollback()
-		t.Fatalf("query failed with error: %v", err)
-	}
-
-	if len(records) != 1 {
-		tx.Rollback()
-		t.Fatal("row not exists")
-	}
-
-	res, err := Update(tx, `users`, "updated_at=?", condition.Equal{"updated_at", records[0].String("updated_at")}, time.Now().Format(time.DateTime))
-	if err != nil {
-		tx.Rollback()
-		t.Fatalf("update failed with error: %v", err)
-	}
-
-	tx.Commit()
-	count, _ := res.RowsAffected()
-	t.Logf("updated count: %d", count)
 }
 
 func TestPool_Random(t *testing.T) {
@@ -293,7 +331,7 @@ func TestPool_Random(t *testing.T) {
 
 	defer query.Close()
 
-	record, err := pool.FindOne(TypeMaster, query)
+	record, err := FindOne(pool.RandExecutor(TypeMaster), query)
 	if err != nil {
 		t.Logf("find one error: %v", err)
 	} else {
@@ -307,11 +345,45 @@ func TestPool_Random(t *testing.T) {
 			break
 		}
 
-		record, err = pool.FindOne(TypeSlave, query)
+		record, err = FindOne(pool.RandExecutor(TypeSlave), query)
 		if err != nil {
 			t.Logf("find one error: %v", err)
 		} else {
 			t.Logf("query records: %+v", record)
 		}
 	}
+}
+
+func TestDb_BeginTx(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin failed with error: %v", err)
+	}
+
+	query := helper.AcquireQuery().
+		From(`users`).
+		Where(condition.Equal{"id", 1})
+	defer query.Close()
+	records, err := Find(tx, query)
+	if err != nil {
+		tx.Rollback()
+		t.Fatalf("query failed with error: %v", err)
+	}
+
+	if len(records) != 1 {
+		tx.Rollback()
+		t.Fatal("row not exists")
+	}
+
+	res, err := Update(tx, `users`, "updated_at=?", condition.Equal{"updated_at", records[0].String("updated_at")}, time.Now().Format(time.DateTime))
+	if err != nil {
+		tx.Rollback()
+		t.Fatalf("update failed with error: %v", err)
+	}
+
+	tx.Commit()
+	count, _ := res.RowsAffected()
+	t.Logf("updated count: %d", count)
 }

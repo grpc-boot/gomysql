@@ -5,14 +5,6 @@ import (
 	"errors"
 )
 
-func DealNotRowsError(err error) error {
-	if err == nil {
-		return err
-	}
-
-	if errors.Is(err, sql.ErrNoRows) {
-		err = nil
-	}
-
-	return err
+func IsNil(err error) bool {
+	return err == nil || errors.Is(err, sql.ErrNoRows)
 }

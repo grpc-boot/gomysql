@@ -10,15 +10,8 @@ func Exec(db Executor, query string, args ...any) (sql.Result, error) {
 }
 
 func ExecContext(ctx context.Context, db Executor, query string, args ...any) (res sql.Result, err error) {
-	defer func() {
-		if err != nil && errorLog != nil {
-			errorLog(err, query, args...)
-		} else if logger != nil {
-			logger(query, args...)
-		}
-	}()
-
 	res, err = db.ExecContext(ctx, query, args...)
+	WriteLog(err, query, args...)
 	return
 }
 

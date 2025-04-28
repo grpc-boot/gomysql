@@ -1,15 +1,10 @@
 package gomysql
 
 import (
-	"context"
-	"database/sql"
-	"database/sql/driver"
-	"errors"
 	"golang.org/x/exp/rand"
 	"sync/atomic"
 	"time"
 
-	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
@@ -119,209 +114,20 @@ func (p *Pool) checkActive(list []*Db) []int {
 	return activeList
 }
 
-func (p *Pool) exec(dbType DbType, fn func(db *Db) error) (err error) {
-	if dbType == TypeSlave && len(p.slaves) > 0 {
-		if len(p.slaves) == 1 {
-			return fn(p.slaves[0])
-		}
-
-		al, _ := p.activeSlaves.Load().([]int)
-		if len(al) == 0 {
-			index := int(p.latestSlave.Load())
-			return fn(p.slaves[index])
-		}
-
-		rand.Shuffle(len(al), func(i, j int) {
-			al[i], al[j] = al[j], al[i]
-		})
-
-		for _, index := range al {
-			err = fn(p.slaves[index])
-			if err != nil && errors.Is(err, driver.ErrBadConn) {
-				continue
-			}
-			p.latestSlave.Store(int32(index))
-			return
-		}
-		return
-	}
-
-	if len(p.masters) == 1 {
-		return fn(p.masters[0])
-	}
-
-	al, _ := p.activeMasters.Load().([]int)
-	if len(al) == 0 {
-		index := int(p.latestMaster.Load())
-		return fn(p.masters[index])
-	}
-
-	rand.Shuffle(len(al), func(i, j int) {
-		al[i], al[j] = al[j], al[i]
-	})
-
-	for _, index := range al {
-		err = fn(p.masters[index])
-		if err != nil && errors.Is(err, driver.ErrBadConn) {
-			continue
-		}
-		p.latestMaster.Store(int32(index))
-		return
-	}
-	return
-}
-
-func (p *Pool) queryRowContext(ctx context.Context, dbType DbType, query string, args ...any) (row *sql.Row) {
-	p.exec(dbType, func(db *Db) error {
-		row = db.queryRowContext(ctx, query, args...)
-		return row.Err()
-	})
-	return
-}
-
-func (p *Pool) queryContext(ctx context.Context, dbType DbType, query string, args ...any) (rows *sql.Rows, err error) {
-	p.exec(dbType, func(db *Db) error {
-		rows, err = db.queryContext(ctx, query, args...)
-		return err
-	})
-	return
-}
-
-func (p *Pool) execContext(ctx context.Context, query string, args ...any) (result sql.Result, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.execContext(ctx, query, args...)
-		return err
-	})
-	return
-}
-
 func (p *Pool) AcquireQuery() *helper.Query {
 	return helper.AcquireQuery()
-}
-
-func (p *Pool) FindOne(dbType DbType, q *helper.Query) (Record, error) {
-	return p.FindOneContext(context.Background(), dbType, q)
-}
-
-func (p *Pool) FindOneContext(ctx context.Context, dbType DbType, q *helper.Query) (r Record, err error) {
-	p.exec(dbType, func(db *Db) error {
-		r, err = db.FindOneContext(ctx, q)
-		return err
-	})
-	return
-}
-
-func (p *Pool) FindOneTimeout(timeout time.Duration, dbType DbType, q *helper.Query) (Record, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.FindOneContext(ctx, dbType, q)
-}
-
-func (p *Pool) Find(dbType DbType, q *helper.Query) (records []Record, err error) {
-	return p.FindContext(context.Background(), dbType, q)
-}
-
-func (p *Pool) FindContext(ctx context.Context, dbType DbType, q *helper.Query) (records []Record, err error) {
-	p.exec(dbType, func(db *Db) error {
-		records, err = db.FindContext(ctx, q)
-		return err
-	})
-	return
-}
-
-func (p *Pool) FindTimeout(timeout time.Duration, dbType DbType, q *helper.Query) (records []Record, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return p.FindContext(ctx, dbType, q)
-}
-
-func (p *Pool) Insert(table string, columns helper.Columns, rows ...helper.Row) (sql.Result, error) {
-	return p.InsertContext(context.Background(), table, columns, rows...)
-}
-
-func (p *Pool) InsertContext(ctx context.Context, table string, columns helper.Columns, rows ...helper.Row) (result sql.Result, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.InsertContext(ctx, table, columns, rows...)
-		return err
-	})
-	return
-}
-
-func (p *Pool) InsertWithInsertedIdContext(ctx context.Context, table string, columns helper.Columns, row helper.Row) (id int64, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		id, err = db.InsertWithInsertedIdContext(ctx, table, columns, row)
-		return err
-	})
-
-	return
-}
-
-func (p *Pool) Update(table string, setter string, where condition.Condition, setterArgs ...any) (sql.Result, error) {
-	return p.UpdateContext(context.Background(), table, setter, where, setterArgs...)
-}
-
-func (p *Pool) UpdateContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (result sql.Result, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.UpdateContext(ctx, table, setter, where, setterArgs...)
-		return err
-	})
-	return
-}
-
-func (p *Pool) UpdateWithRowsAffectedContext(ctx context.Context, table string, setter string, where condition.Condition, setterArgs ...any) (rows int64, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		rows, err = db.UpdateWithRowsAffectedContext(ctx, table, setter, where, setterArgs...)
-		return err
-	})
-	return
-}
-
-func (p *Pool) Delete(table string, where condition.Condition) (sql.Result, error) {
-	return p.DeleteContext(context.Background(), table, where)
-}
-
-func (p *Pool) DeleteContext(ctx context.Context, table string, where condition.Condition) (result sql.Result, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		result, err = db.DeleteContext(ctx, table, where)
-		return err
-	})
-	return
-}
-
-func (p *Pool) DeleteWithRowsAffectedContext(ctx context.Context, table string, where condition.Condition) (rows int64, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		rows, err = db.DeleteWithRowsAffectedContext(ctx, table, where)
-		return err
-	})
-	return
-}
-
-func (p *Pool) Begin() (tx *sql.Tx, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		tx, err = db.Begin()
-		return err
-	})
-	return
-}
-
-func (p *Pool) BeginTx(ctx context.Context, opts *sql.TxOptions) (tx *sql.Tx, err error) {
-	p.exec(TypeMaster, func(db *Db) error {
-		tx, err = db.BeginTx(ctx, opts)
-		return err
-	})
-	return
 }
 
 func (p *Pool) Close() error {
 	p.ticker.Stop()
 
 	for _, db := range p.masters {
-		db.Pool().Close()
+		_ = db.Pool().Close()
 	}
 
 	if len(p.slaves) > 0 {
 		for _, db := range p.slaves {
-			db.Pool().Close()
+			_ = db.Pool().Close()
 		}
 	}
 

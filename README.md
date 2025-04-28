@@ -85,10 +85,8 @@ func TestDb_Exec(t *testing.T) {
 package main
 
 import (
-  "context"
   "fmt"
   "log"
-  "strings"
   "time"
 
   "github.com/grpc-boot/gomysql"
@@ -119,25 +117,27 @@ func init() {
   })
 
   gomysql.SetErrorLog(func(err error, query string, args ...any) {
-    fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
+    fmt.Printf("%s exec sql: %s args: %+v with error: %v\n", time.Now().Format(time.DateTime), query, args, err)
   })
 }
 
 func main() {
   current := time.Now()
-  id, err := db.InsertWithInsertedIdContext(
-    context.Background(),
-    `users`,
-    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
-    helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
+  res, err := gomysql.Insert(
+    db.Executor(),
+    DefaultUserModel.TableName(),
+    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at", "last_login_at"},
+    helper.Row{"uname", "nickName", "passwd", 1, current.Unix(), current.Format(time.DateTime), current.Format(time.DateTime)},
   )
+
   if err != nil {
-    t.Fatalf("insert data failed with error: %v\n", err)
+    panic(err)
   }
 
-  t.Logf("insert data with id: %d\n", id)
+  id, _ := res.LastInsertId()
+  fmt.Printf("insert id: %d\n", id)
 
-  user, err := gomysql.FindById(db.Executor(), id, DefaultUserModel)
+  user, err := gomysql.FindById(db.Pool(), id, DefaultUserModel)
   if err != nil {
     panic(err)
   }
@@ -185,7 +185,6 @@ func (um *UserModel) Assemble(br gomysql.BytesRecord) {
   um.LastLoginAt, _ = time.Parse(time.DateTime, br.String("last_login_at"))
   um.Remark = br.String("remark")
 }
-
 ```
 
 #### Select
@@ -197,68 +196,69 @@ import (
 	"testing"
 	"time"
 
+    "github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 func TestDb_Find(t *testing.T) {
-	// SELECT * FROM users WHERE id=1
-	query := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Equal{"id", 1})
+  // SELECT * FROM users WHERE id=1
+  query := helper.AcquireQuery().
+    From(`users`).
+    Where(condition.Equal{"id", 2})
 
-	defer query.Close()
+  defer query.Close()
 
-	record, err := db.FindOne(query)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
-	t.Logf("record: %+v\n", record)
+  record, err := gomysql.FindOne(db.Executor(), query)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("record: %+v\n", record)
 
-	// SELECT * FROM users WHERE id IN(1, 2)
-	query1 := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.In[int]{"id", []int{1, 2}})
-	defer query1.Close()
+  // SELECT * FROM users WHERE id IN(1, 2)
+  query1 := helper.AcquireQuery().
+    From(`users`).
+    Where(condition.In[int]{"id", []int{1, 2}})
+  defer query1.Close()
 
-	records, err := db.FindTimeout(time.Second*2, query1)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
-	t.Logf("records: %+v\n", records)
+  records, err := gomysql.FindTimeout(time.Second*2, db.Executor(), query1)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("records: %+v\n", records)
 
-	// SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at>= timestamp
-	query2 := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.And{
-			condition.BeginWith{"user_name", "user"},
-			condition.Gte{"created_at", time.Now().Add(-7 * 24 * time.Hour).Unix()},
-		})
-	defer query2.Close()
+  // SELECT * FROM users WHERE user_name LIKE 'user%' AND created_at> timestamp
+  query2 := helper.AcquireQuery().
+    From(`users`).
+          Where(condition.And{
+            condition.BeginWith{"user_name", "user"},
+            condition.Gte{"created_at", time.Now().Add(-7 * 24 * time.Hour).Unix()},
+          })
+  defer query2.Close()
 
-	records, err = db.FindTimeout(time.Second*2, query2)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
-	t.Logf("records: %+v\n", records)
+  records, err = gomysql.FindTimeout(time.Second*2, db.Executor(), query2)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("records: %+v\n", records)
 
-	// SELECT * FROM users WHERE (user_name LIKE 'animal' AND created_at BETWEEN timestamp1 AND timestamp2) OR user_name LIKE 'user%'
-	query3 := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Or{
-			condition.And{
-				condition.BeginWith{"user_name", "animal"},
-				condition.Between{"created_at", time.Now().Add(-30 * 7 * 24 * time.Hour).Unix(), time.Now().Unix()},
-			},
-			condition.BeginWith{"user_name", "user"},
-		})
-	defer query3.Close()
+  // SELECT * FROM users WHERE (user_name LIKE 'animal' AND created_at BETWEEN timestamp1 AND timestamp2) OR user_name LIKE 'user%'
+  query3 := helper.AcquireQuery().
+    From(`users`).
+          Where(condition.Or{
+            condition.And{
+              condition.BeginWith{"user_name", "animal"},
+              condition.Between{"created_at", time.Now().Add(-30 * 7 * 24 * time.Hour).Unix(), time.Now().Unix()},
+            },
+            condition.BeginWith{"user_name", "user"},
+          })
+  defer query3.Close()
 
-	records, err = db.FindTimeout(time.Second*2, query3)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
-	t.Logf("records: %+v\n", records)
+  records, err = gomysql.FindTimeout(time.Second*2, db.Executor(), query3)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("records: %+v\n", records)
 }
 ```
 
@@ -268,18 +268,33 @@ func TestDb_Find(t *testing.T) {
 package main
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
 
+    "github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 func TestDb_Insert(t *testing.T) {
-  id, err := db.InsertWithInsertedIdContext(
-    context.Background(),
+  res, err := gomysql.Insert(
+    db.Executor(),
+    `users`,
+    helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
+    helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
+  )
+
+  if err != nil {
+    t.Fatalf("insert data failed with error: %v\n", err)
+  }
+
+  id, _ := res.LastInsertId()
+  t.Logf("insert data with id: %d\n", id)
+
+  id, err = gomysql.InsertWithInsertedIdTimeout(
+    time.Second,
+    db.Executor(),
     `users`,
     helper.Columns{"user_name", "nickname", "passwd", "is_on", "created_at", "updated_at"},
     helper.Row{"user1", "nickname1", strings.Repeat("1", 32), 1, time.Now().Unix(), time.Now().Format(time.DateTime)},
@@ -302,16 +317,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 func TestDb_Update(t *testing.T) {
-  rows, err := db.UpdateWithRowsAffectedContext(
-    context.Background(),
+  res, err := gomysql.Update(
+    db.Executor(),
     `users`,
     `last_login_at=?`,
-    condition.Equal{Field: "id", Value: 1},
+    condition.Equal{Field: "id", Value: 2},
+    time.Now().Format(time.DateTime),
+  )
+
+  if err != nil {
+    t.Fatalf("update data failed with error: %v\n", err)
+  }
+
+  rows, _ := res.RowsAffected()
+  t.Logf("update data rows affected: %d", rows)
+
+  rows, err = gomysql.UpdateWithRowsAffectedContext(
+    context.Background(),
+    db.Executor(),
+    `users`,
+    `last_login_at=?`,
+    condition.Equal{Field: "id", Value: 3},
     time.Now().Format(time.DateTime),
   )
 
@@ -333,15 +365,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grpc-boot/gomysql"
 	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
 
 func TestDb_Delete(t *testing.T) {
+  res, err := gomysql.Delete(db.Executor(), `users`, condition.Equal{Field: "id", Value: 1})
+  if err != nil {
+    t.Fatalf("delete data failed with error: %v\n", err)
+  }
+
+  rows, _ := res.RowsAffected()
+  t.Logf("delete data rows affected: %d", rows)
+
   ctx, cancel := context.WithTimeout(context.Background(), time.Second)
   defer cancel()
-  rows, err := db.DeleteWithRowsAffectedContext(
+  rows, err = gomysql.DeleteWithRowsAffectedContext(
     ctx,
+    db.Executor(),
     `users`,
     condition.Equal{Field: "id", Value: 1},
   )
@@ -412,75 +454,92 @@ package main
 
 import (
   "testing"
-
+  "time"
+  
   "github.com/grpc-boot/gomysql"
   "github.com/grpc-boot/gomysql/condition"
+  "github.com/grpc-boot/gomysql/helper"
 )
 
 func TestPool_Random(t *testing.T) {
-	opt := gomysql.PoolOptions{
-		Masters: []gomysql.Options{
-			{
-				Host:     "127.0.0.1",
-				Port:     3306,
-				DbName:   "users",
-				UserName: "root",
-				Password: "12345678",
-			},
-			{
-				Host:     "127.0.0.1",
-				Port:     3306,
-				DbName:   "users",
-				UserName: "root",
-				Password: "12345678",
-			},
-		},
-		Slaves: []gomysql.Options{
-			{
-				Host:     "127.0.0.1",
-				Port:     3306,
-				DbName:   "users",
-				UserName: "root",
-				Password: "12345678",
-			},
-			{
-				Host:     "127.0.0.1",
-				Port:     3306,
-				DbName:   "users",
-				UserName: "root",
-				Password: "12345678",
-			},
-			{
-				Host:     "127.0.0.1",
-				Port:     3306,
-				DbName:   "users",
-				UserName: "root",
-				Password: "12345678",
-			},
-		},
-	}
+  opt := gomysql.PoolOptions{
+    Masters: []gomysql.Options{
+      {
+        Host:     "127.0.0.1",
+        Port:     3306,
+        DbName:   "users",
+        UserName: "root",
+        Password: "12345678",
+      },
+      {
+        Host:     "127.0.0.1",
+        Port:     3306,
+        DbName:   "users",
+        UserName: "root",
+        Password: "12345678",
+      },
+    },
+    Slaves: []gomysql.Options{
+      {
+        Host:     "127.0.0.1",
+        Port:     3306,
+        DbName:   "users",
+        UserName: "root",
+        Password: "12345678",
+      },
+      {
+        Host:     "127.0.0.1",
+        Port:     3306,
+        DbName:   "users",
+        UserName: "root",
+        Password: "12345678",
+      },
+      {
+        Host:     "127.0.0.1",
+        Port:     3306,
+        DbName:   "users",
+        UserName: "root",
+        Password: "12345678",
+      },
+    },
+  }
 
-	pool, err := gomysql.NewPool(opt)
-	if err != nil {
-		t.Fatalf("want nil, got %v", err)
-	}
+  pool, err := gomysql.NewPool(opt, time.Second*10)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
 
-	query := helper.AcquireQuery().
-		From(`users`).
-		Where(condition.Equal{"id", 1})
-	defer query.Close()
+  var (
+    query = helper.AcquireQuery().
+      From(`users`).
+      Where(condition.Equal{"id", 1})
+    start       = time.Now()
+    maxInterval = time.Minute
+  )
 
-    record, err := pool.FindOne(gomysql.TypeMaster, query)
-    if err != nil {
-      t.Fatalf("find one error: %v", err)
-    }
+  defer query.Close()
+
+  record, err := gomysql.FindOne(pool.RandExecutor(gomysql.TypeMaster), query)
+  if err != nil {
+    t.Logf("find one error: %v", err)
+  } else {
     t.Logf("query records: %+v", record)
-  
-    record, err = pool.FindOne(gomysql.TypeSlave, query)
-    if err != nil {
-      t.Fatalf("find one error: %v", err)
+  }
+
+  ticker := time.NewTicker(time.Second * 5)
+  for range ticker.C {
+    if time.Since(start) > maxInterval {
+      ticker.Stop()
+      break
     }
-    t.Logf("query records: %+v", record)
+
+    record, err = gomysql.FindOne(pool.RandExecutor(gomysql.TypeSlave), query)
+    if err != nil {
+      t.Logf("find one error: %v", err)
+    } else {
+      t.Logf("query records: %+v", record)
+    }
+  }
 }
 ```
 
@@ -504,7 +563,7 @@ func init() {
 
   // 记录错误日志
   gomysql.SetErrorLog(func(err error, query string, args ...any) {
-    fmt.Printf("error: %v exec sql: %s args: %+v\n", err, query, args)
+    fmt.Printf("%s exec sql: %s args: %+v with error: %v\n", time.Now().Format(time.DateTime), query, args, err)
   })
 }
 
