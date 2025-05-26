@@ -4,8 +4,61 @@ import (
 	"context"
 	"time"
 
+	"github.com/grpc-boot/gomysql/condition"
 	"github.com/grpc-boot/gomysql/helper"
 )
+
+func FindModelByIdTimeout[T DbModel](timeout time.Duration, model T, db Executor, id any, tableArgs ...any) (T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return FindModelByIdContext(ctx, model, db, id, tableArgs...)
+}
+
+func FindModelByIdContext[T DbModel](ctx context.Context, model T, db Executor, id any, tableArgs ...any) (T, error) {
+	var (
+		q = helper.AcquireQuery().
+			From(model.TableName(tableArgs...)).
+			Where(condition.Equal{Field: model.PrimaryKey(), Value: id})
+	)
+
+	defer q.Close()
+	return FindModelContext(ctx, model, db, q)
+}
+
+func FindModelByConditionTimeout[T DbModel](timeout time.Duration, model T, db Executor, cond condition.Condition, tableArgs ...any) (T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return FindModelByConditionContext(ctx, model, db, cond, tableArgs...)
+}
+
+func FindModelByConditionContext[T DbModel](ctx context.Context, model T, db Executor, cond condition.Condition, tableArgs ...any) (T, error) {
+	var (
+		q = helper.AcquireQuery().
+			From(model.TableName(tableArgs...)).
+			Where(cond)
+	)
+
+	defer q.Close()
+	return FindModelContext(ctx, model, db, q)
+}
+
+func FindModelsByConditionTimeout[T DbModel](timeout time.Duration, model T, db Executor, cond condition.Condition, tableArgs ...any) ([]T, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return FindModelsByConditionContext(ctx, model, db, cond, tableArgs...)
+}
+
+func FindModelsByConditionContext[T DbModel](ctx context.Context, model T, db Executor, cond condition.Condition, tableArgs ...any) ([]T, error) {
+	var (
+		q = helper.AcquireQuery().
+			From(model.TableName(tableArgs...)).
+			Where(cond)
+	)
+
+	defer q.Close()
+	return FindModelsContext(ctx, model, db, q)
+}
 
 func FindModels[T Model](model T, db Executor, q *helper.Query) ([]T, error) {
 	return FindModelsContext(context.Background(), model, db, q)

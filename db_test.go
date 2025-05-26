@@ -48,7 +48,7 @@ func init() {
 		Port:     3306,
 		DbName:   "users",
 		UserName: "root",
-		Password: "12345678",
+		Password: "",
 	})
 
 	if err != nil {
@@ -189,6 +189,73 @@ func TestDb_Update(t *testing.T) {
 	t.Logf("update data rows affected: %d", rows)
 }
 
+func Test_Agg(t *testing.T) {
+	count, err := CountByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("count failed with error: %v\n", err)
+	}
+	t.Logf("count: %d", count)
+
+	sum, err := SumByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("sum failed with error: %v\n", err)
+	}
+	t.Logf("sum: %d", int64(sum))
+
+	maxId, err := MaxByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("max failed with error: %v\n", err)
+	}
+	t.Logf("maxId: %s", maxId)
+
+	minId, err := MinByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("min failed with error: %v\n", err)
+	}
+	t.Logf("minId: %s", minId)
+
+	avg, err := AvgByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("avg failed with error: %v\n", err)
+	}
+	t.Logf("avg: %s", avg)
+}
+
 func TestDb_Delete(t *testing.T) {
 	res, err := Delete(db.Executor(), `users`, condition.Equal{Field: "id", Value: 1})
 	if err != nil {
@@ -273,6 +340,48 @@ func TestDb_Find(t *testing.T) {
 	t.Logf("records: %+v\n", records)
 }
 
+func TestFindModel(t *testing.T) {
+	// SELECT * FROM users WHERE id=? args: [2]
+	u, err := FindModelByIdTimeout(time.Second, defaultUser, db.Executor(), 2)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("user: %+v\n", u)
+
+	// SELECT * FROM users WHERE id=? args: [2]
+	u, err = FindModelByConditionTimeout(time.Second, defaultUser, db.Executor(), condition.Equal{Field: "id", Value: 2})
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("user: %+v\n", u)
+
+	// SELECT * FROM users WHERE id<? args: [100]
+	us, err := FindModelsByConditionTimeout(time.Second, defaultUser, db.Executor(), condition.Lt{Field: "id", Value: 100})
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("users: %#v\n", us)
+
+	q := helper.AcquireQuery().
+		From(defaultUser.TableName()).
+		Where(condition.Gt{Field: "id", Value: 1}).
+		Limit(100)
+	defer q.Close()
+	// SELECT * FROM users WHERE id>? LIMIT 0,100 args: [1]
+	us, err = FindModelsTimeout(time.Second, defaultUser, db.Executor(), q)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("users: %#v\n", us)
+
+	// SELECT * FROM users WHERE id>? LIMIT 0,100 args: [1]
+	u, err = FindModelTimeout(time.Second, defaultUser, db.Executor(), q)
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	t.Logf("user: %+v\n", u)
+}
+
 func TestPool_Random(t *testing.T) {
 	opt := PoolOptions{
 		Masters: []Options{
@@ -281,14 +390,14 @@ func TestPool_Random(t *testing.T) {
 				Port:     3306,
 				DbName:   "users",
 				UserName: "root",
-				Password: "12345678",
+				Password: "",
 			},
 			{
 				Host:     "127.0.0.1",
 				Port:     3306,
 				DbName:   "users",
 				UserName: "root",
-				Password: "12345678",
+				Password: "",
 			},
 		},
 		Slaves: []Options{
@@ -297,21 +406,21 @@ func TestPool_Random(t *testing.T) {
 				Port:     3306,
 				DbName:   "users",
 				UserName: "root",
-				Password: "12345678",
+				Password: "",
 			},
 			{
 				Host:     "127.0.0.1",
 				Port:     3306,
 				DbName:   "users",
 				UserName: "root",
-				Password: "12345678",
+				Password: "",
 			},
 			{
 				Host:     "127.0.0.1",
 				Port:     3306,
 				DbName:   "users",
 				UserName: "root",
-				Password: "12345678",
+				Password: "",
 			},
 		},
 	}
@@ -326,7 +435,7 @@ func TestPool_Random(t *testing.T) {
 			From(`users`).
 			Where(condition.Equal{"id", 1})
 		start       = time.Now()
-		maxInterval = time.Minute
+		maxInterval = time.Second * 20
 	)
 
 	defer query.Close()
@@ -357,6 +466,7 @@ func TestPool_Random(t *testing.T) {
 func TestDb_BeginTx(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatalf("begin failed with error: %v", err)
@@ -364,7 +474,7 @@ func TestDb_BeginTx(t *testing.T) {
 
 	query := helper.AcquireQuery().
 		From(`users`).
-		Where(condition.Equal{"id", 1})
+		Where(condition.Gte{"id", 1})
 	defer query.Close()
 	records, err := Find(tx, query)
 	if err != nil {

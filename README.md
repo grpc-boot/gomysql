@@ -22,6 +22,7 @@ go语言实现的mysql帮助库
   - [Select](#Select) 
   - [Insert](#Insert) 
   - [Update](#Update) 
+  - [Aggregation](#Aggregation) 
   - [Delete](#Delete) 
   - [Transaction](#Transaction)
   - [Read-Write-Splitting](#Read-Write-Splitting) 
@@ -272,6 +273,48 @@ func TestDb_Find(t *testing.T) {
   }
   t.Logf("records: %+v\n", records)
 }
+
+func TestFindModel(t *testing.T) {
+  // SELECT * FROM users WHERE id=? args: [2]
+  u, err := gomysql.FindModelByIdTimeout(time.Second, DefaultUserModel, db.Executor(), 2)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("user: %+v\n", u)
+
+  // SELECT * FROM users WHERE id=? args: [2]
+  u, err = gomysql.FindModelByConditionTimeout(time.Second, DefaultUserModel, db.Executor(), condition.Equal{Field: "id", Value: 2})
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("user: %+v\n", u)
+
+  // SELECT * FROM users WHERE id<? args: [100]
+  us, err := gomysql.FindModelsByConditionTimeout(time.Second, DefaultUserModel, db.Executor(), condition.Lt{Field: "id", Value: 100})
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("users: %#v\n", us)
+
+  q := helper.AcquireQuery().
+    From(DefaultUserModel.TableName()).
+    Where(condition.Gt{Field: "id", Value: 1}).
+    Limit(100)
+  defer q.Close()
+  // SELECT * FROM users WHERE id>? LIMIT 0,100 args: [1]
+  us, err = gomysql.FindModelsTimeout(time.Second, DefaultUserModel, db.Executor(), q)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("users: %#v\n", us)
+
+  // SELECT * FROM users WHERE id>? LIMIT 0,100 args: [1]
+  u, err = gomysql.FindModelTimeout(time.Second, DefaultUserModel, db.Executor(), q)
+  if err != nil {
+    t.Fatalf("want nil, got %v", err)
+  }
+  t.Logf("user: %+v\n", u)
+}
 ```
 
 #### Insert
@@ -364,6 +407,88 @@ func TestDb_Update(t *testing.T) {
   }
 
   t.Logf("update data rows affected: %d", rows)
+}
+```
+
+#### Aggregation
+
+```go
+package main
+
+import (
+  "testing"
+  "time"
+
+  "github.com/grpc-boot/gomysql"
+  "github.com/grpc-boot/gomysql/condition"
+  "github.com/grpc-boot/gomysql/helper"
+)
+
+func Test_Agg(t *testing.T) {
+	count, err := gomysql.CountByConditionTimeout(
+		time.Second,
+        DefaultUserModel,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("count failed with error: %v\n", err)
+	}
+	t.Logf("count: %d", count)
+
+	sum, err := gomysql.SumByConditionTimeout(
+		time.Second,
+        DefaultUserModel,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("sum failed with error: %v\n", err)
+	}
+	t.Logf("sum: %d", int64(sum))
+
+	maxId, err := gomysql.MaxByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("max failed with error: %v\n", err)
+	}
+	t.Logf("maxId: %s", maxId)
+
+	minId, err := gomysql.MinByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("min failed with error: %v\n", err)
+	}
+	t.Logf("minId: %s", minId)
+
+	avg, err := gomysql.AvgByConditionTimeout(
+		time.Second,
+		defaultUser,
+		db.Executor(),
+		condition.Gt{Field: "id", Value: 0},
+		"id",
+	)
+
+	if err != nil {
+		t.Fatalf("avg failed with error: %v\n", err)
+	}
+	t.Logf("avg: %s", avg)
 }
 ```
 

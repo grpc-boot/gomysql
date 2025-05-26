@@ -68,6 +68,6 @@ func (db *Db) Begin() (tx *sql.Tx, err error) {
 
 func (db *Db) BeginTx(ctx context.Context, opts *sql.TxOptions) (tx *sql.Tx, err error) {
 	tx, err = db.pool.BeginTx(ctx, opts)
-	WriteLog(err, "BEGIN", opts.Isolation, opts.ReadOnly)
+	WriteLog(err, "BEGIN WITH TX OPTIONS")
 	return
 }
