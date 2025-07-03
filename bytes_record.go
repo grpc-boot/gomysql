@@ -44,6 +44,16 @@ func (br BytesRecord) ToInt64(key string) int64 {
 	return convert.Bytes2Int64(value)
 }
 
+func (br BytesRecord) ToUint16(key string) uint16 {
+	value, _ := br[key]
+	return convert.Bytes2Uint16(value)
+}
+
+func (br BytesRecord) ToInt16(key string) int16 {
+	value, _ := br[key]
+	return convert.Bytes2Int16(value)
+}
+
 func (br BytesRecord) ToUint8(key string) uint8 {
 	value, _ := br[key]
 	return convert.Bytes2Uint8(value)

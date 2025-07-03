@@ -44,6 +44,16 @@ func (r Record) ToInt64(key string) int64 {
 	return convert.String2Int64(value)
 }
 
+func (r Record) ToUint16(key string) uint16 {
+	value, _ := r[key]
+	return convert.String2Uint16(value)
+}
+
+func (r Record) ToInt16(key string) int16 {
+	value, _ := r[key]
+	return convert.String2Int16(value)
+}
+
 func (r Record) ToUint8(key string) uint8 {
 	value, _ := r[key]
 	return convert.String2Uint8(value)
