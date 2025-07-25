@@ -472,24 +472,23 @@ func TestDb_BeginTx(t *testing.T) {
 		t.Fatalf("begin failed with error: %v", err)
 	}
 
+	defer tx.Rollback()
+
 	query := helper.AcquireQuery().
 		From(`users`).
 		Where(condition.Gte{"id", 1})
 	defer query.Close()
 	records, err := Find(tx, query)
 	if err != nil {
-		tx.Rollback()
 		t.Fatalf("query failed with error: %v", err)
 	}
 
 	if len(records) != 1 {
-		tx.Rollback()
 		t.Fatal("row not exists")
 	}
 
 	res, err := Update(tx, `users`, "updated_at=?", condition.Equal{"updated_at", records[0].String("updated_at")}, time.Now().Format(time.DateTime))
 	if err != nil {
-		tx.Rollback()
 		t.Fatalf("update failed with error: %v", err)
 	}
 
