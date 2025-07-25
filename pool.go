@@ -1,7 +1,7 @@
 package gomysql
 
 import (
-	"golang.org/x/exp/rand"
+	"math/rand"
 	"sync/atomic"
 	"time"
 

@@ -11,10 +11,10 @@ func DefaultMysqlOption() Options {
 		Port:                  3306,
 		UserName:              "root",
 		CharSet:               "utf8",
-		MaxOpenConns:          8,
+		MaxOpenConns:          32,
 		MaxIdleConns:          2,
-		ConnMaxLifetimeSecond: 600,
-		ConnMaxIdleTimeSecond: 60,
+		ConnMaxLifetimeSecond: 120,
+		ConnMaxIdleTimeSecond: 90,
 	}
 }
 
