@@ -1,6 +1,8 @@
 module github.com/grpc-boot/gomysql
 
-go 1.21
+go 1.21.0
+
+toolchain go1.21.13
 
 require github.com/go-sql-driver/mysql v1.9.3
 
