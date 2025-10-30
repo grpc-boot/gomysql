@@ -714,7 +714,7 @@ func init() {
 $ go install github.com/grpc-boot/gomysql/example/gmm@v1.1.6
 
 # 使用帮助
-$ ./gmm
+$ gmm
 Usage of ./gmm:
   -P int
     	Mysql port (default 3306)
