@@ -30,6 +30,7 @@ go语言实现的mysql帮助库
   - [Read-Write-Splitting](#Read-Write-Splitting) 
   - [Sql-Log](#Sql-Log) 
   - [测试](db_test.go)
+  - [gmm代码生成器](gmm代码生成器)
 
 #### 实例化db
 
