@@ -6,6 +6,25 @@ import (
 	"github.com/grpc-boot/gomysql/convert"
 )
 
+func ScanStringValues(rows *sql.Rows, err error) ([]string, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var values []string
+	for rows.Next() {
+		var value string
+		if err = rows.Scan(&value); err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+
+	return values, nil
+}
+
 func Scan(rows *sql.Rows, err error) ([]Record, error) {
 	if err != nil {
 		return nil, err

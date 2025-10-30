@@ -13,6 +13,8 @@ go语言实现的mysql帮助库
 
 > 5.支持全局sql输出到日志，自动记录错误日志
 
+> 6.gmm代码生成器
+
 <!-- TOC -->
 
 - 使用说明
@@ -703,5 +705,37 @@ func init() {
   })
 }
 
+```
+
+#### gmm代码生成器
+
+```shell
+# 安装
+$ go install github.com/grpc-boot/gomysql/example/gmm@v1.1.6
+
+# 使用帮助
+$ ./gmm
+Usage of ./gmm:
+  -P int
+    	Mysql port (default 3306)
+  -c string
+    	Charset (default "utf8")
+  -d string
+    	Mysql db name
+  -h string
+    	Mysql host (default "localhost")
+  -o string
+    	Gmm model output directory (default "entity")
+  -p string
+    	Mysql password
+  -t string
+    	Gmm table, All tables are selected by default
+  -u string
+    	Mysql user (default "root")
+    	
+# 生成代码
+$ ./gmm -d=users
+create model for table:users success
+create model for table:users_log success
 ```
 
