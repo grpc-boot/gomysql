@@ -7,13 +7,13 @@ go语言实现的mysql帮助库
 
 > 2.类似Sql语法，语法更清晰明了
 
-> 3.支持读写分离
+> 3.[支持读写分离](#Read-Write-Splitting)
 
 > 4.支持节点failover和failback
 
-> 5.支持全局sql输出到日志，自动记录错误日志
+> 5.[支持全局sql输出到日志，自动记录错误日志](#Sql-Log)
 
-> 6.gmm代码生成器
+> 6.[gmm代码生成器](#gmm代码生成器)
 
 <!-- TOC -->
 
@@ -30,7 +30,7 @@ go语言实现的mysql帮助库
   - [Read-Write-Splitting](#Read-Write-Splitting) 
   - [Sql-Log](#Sql-Log) 
   - [测试](db_test.go)
-  - [gmm代码生成器](gmm代码生成器)
+  - [gmm代码生成器](#gmm代码生成器)
 
 #### 实例化db
 
@@ -735,8 +735,201 @@ Usage of ./gmm:
     	Mysql user (default "root")
     	
 # 生成代码
-$ ./gmm -d=users
+$ gmm -d=users
 create model for table:users success
-create model for table:users_log success
+```
+
+> gmm代码生成器会生成代码到output目录，默认output目录为entity，gmm会为每张表生成两个文件，如: `users`表会生成`users.go`和`users_crud.go`，代码示例如下：
+
+> users.go
+
+```go
+package entity
+
+import (
+  "github.com/grpc-boot/gomysql"
+)
+
+type Users struct {
+  Id                   uint64          `json:"id"`                    // 主键id
+  UserName             string          `json:"userName"`              // 登录名 (default: )
+  Nickname             string          `json:"nickname"`              // 昵称 (default: )
+  Passwd               string          `json:"passwd"`                // 密码 (default: )
+  Email                string          `json:"email"`                 // 邮箱 (default: )
+  Mobile               string          `json:"mobile"`                // 手机号 (default: )
+  IsOn                 uint8           `json:"isOn"`                  // 账号状态(1已启用，0已禁用) (default: 0)
+  CreatedAt            uint64          `json:"createdAt"`             // 创建时间 (default: 0)
+  UpdatedAt            string          `json:"updatedAt"`             // 更新时间 (default: CURRENT_TIMESTAMP)
+  LastLoginAt          string          `json:"lastLoginAt"`           // 上次登录时间 (default: CURRENT_TIMESTAMP)
+  Remark               string          `json:"remark"`                // 备注
+}
+
+func (u *Users) NewModel() gomysql.Model {
+  return &Users{}
+}
+
+func (u *Users) TableName(args ...any) string {
+  return "users"
+}
+
+func (u *Users) LabelMap() map[string]string {
+  return map[string]string{
+    "id": "主键id",
+    "userName": "登录名",
+    "nickname": "昵称",
+    "passwd": "密码",
+    "email": "邮箱",
+    "mobile": "手机号",
+    "isOn": "账号状态(1已启用，0已禁用)",
+    "createdAt": "创建时间",
+    "updatedAt": "更新时间",
+    "lastLoginAt": "上次登录时间",
+    "remark": "备注",
+  }
+}
+
+func (u *Users) PrimaryKey() string {
+  return "id"
+}
+
+func (u *Users) Assemble(br gomysql.BytesRecord) {
+  if len(br) == 0 {
+    return
+  }
+
+  u.Id = br.ToUint64("id")
+  u.UserName = br.String("user_name")
+  u.Nickname = br.String("nickname")
+  u.Passwd = br.String("passwd")
+  u.Email = br.String("email")
+  u.Mobile = br.String("mobile")
+  u.IsOn = br.ToUint8("is_on")
+  u.CreatedAt = br.ToUint64("created_at")
+  u.UpdatedAt = br.String("updated_at")
+  u.LastLoginAt = br.String("last_login_at")
+  u.Remark = br.String("remark")
+}
+```
+
+> users_crud.go
+
+```go
+package entity
+
+import (
+  "context"
+  "time"
+
+  "github.com/grpc-boot/gomysql"
+  "github.com/grpc-boot/gomysql/condition"
+  "github.com/grpc-boot/gomysql/filter"
+  "github.com/grpc-boot/gomysql/helper"
+)
+
+var (
+  DefaultUsers = &Users{}
+)
+
+// SearchByScroll
+/** filter example:
+* {
+        "filters": {  // 多个字段间筛选时AND关系
+            "field1": {
+                "field": "field1",
+                "opt": ">", //=、≠、>、>=、<、<=、Contains、Not Contains、Start With、End With、Is Not Empty、Is Empty、Is Any Of
+                "value": "100", //当opt为Is Any Of时，多个value值通过","分隔
+            },
+            "field2": {
+                "field": "field2",
+                "opt": "=",
+                "value": "2",
+            }
+        },
+        "sorts": {     // cursor分页仅支持单字段排序
+            "field": "field3",
+            "kind": "desc" //asc、desc
+        },
+        "cursor": "0",
+        "pageSize": 100,
+    }
+*/
+func (u *Users) SearchByScroll(timeout time.Duration, filter *filter.Scroll, defaultId int64, db gomysql.Executor, args ...any) (hasMore bool, last *Users, ms []*Users, err error) {
+  return gomysql.ScrollFilterWithIdTimeout(timeout, filter, defaultId, DefaultUsers, db, args...)
+}
+
+// SearchByPage
+/**  filter example:
+*   {
+        "filters": {
+            "field1": {
+                "field": "field1",
+                "opt": ">", //=、≠、>、>=、<、<=、Contains、Not Contains、Start With、End With、Is Not Empty、Is Empty、Is Any Of
+                "value": "100", //当opt为Is Any Of时，多个value值通过","分隔
+            },
+            "field2": {
+                "field": "field2",
+                "opt": "=",
+                "value": "2",
+            }
+        },
+        "sorts": [
+            {
+                "field": "field3",
+                "kind": "desc" //asc、desc
+            },
+            {
+                "field": "field4",
+                "kind": "asc" //asc、desc
+            },
+        ],
+        "page": 1,
+        "pageSize": 100,
+    }
+*/
+func (u *Users) SearchByPage(timeout time.Duration, filter *filter.Page, db gomysql.Executor, args ...any) (totalCount, pageCount int64, ms []*Users, err error) {
+  return gomysql.PageFilterWithTotalTimeout(timeout, filter, DefaultUsers, db, args...)
+}
+
+func (u *Users) Index(timeout time.Duration,db gomysql.Executor, cond condition.Condition, tableArgs ...any) (ms []*Users, err error){
+  return gomysql.FindModelsByConditionTimeout(timeout, DefaultUsers, db, cond, tableArgs...)
+}
+
+func (u *Users) Info(timeout time.Duration,db gomysql.Executor, cond condition.Condition, tableArgs ...any) (info *Users, err error){
+  return gomysql.FindModelByConditionTimeout(timeout, DefaultUsers, db, cond, tableArgs...)
+}
+
+func (u *Users) Create(db gomysql.Executor, info *Users) (id int64, err error) {
+  return gomysql.InsertWithInsertedIdContext(
+    context.Background(),
+    db,
+    DefaultUsers.TableName(),
+    helper.Columns{"user_name","nickname","passwd","email","mobile","is_on","created_at","updated_at","last_login_at","remark"},
+    helper.Row{info.UserName,info.Nickname,info.Passwd,info.Email,info.Mobile,info.IsOn,info.CreatedAt,info.UpdatedAt,info.LastLoginAt,info.Remark},
+  )
+}
+
+func (u *Users) InfoById(db gomysql.Executor, id int64) (info *Users, err error) {
+  return gomysql.FindById(db, id, DefaultUsers)
+}
+
+func (u *Users) Update(db gomysql.Executor, id uint64, setters string, setterArgs ...any) (rows int64, err error) {
+  return gomysql.UpdateWithRowsAffectedContext(
+    context.Background(),
+    db,
+    DefaultUsers.TableName(),
+    setters,
+    condition.Equal{Field: "id", Value: id},
+    setterArgs...,
+  )
+}
+
+func (u *Users) Delete(db gomysql.Executor, id uint64) (rows int64, err error) {
+  return gomysql.DeleteWithRowsAffectedContext(
+    context.Background(),
+    db,
+    DefaultUsers.TableName(),
+    condition.Equal{Field: "id", Value: id},
+  )
+}
 ```
 
