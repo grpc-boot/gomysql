@@ -16,6 +16,7 @@ func GenerateStruct(primaryField, pkg string, table string, cols []ColumnInfo) (
 		structContent  = bytes.NewBuffer(nil)
 		structLabel    = bytes.NewBuffer(nil)
 		structAssemble = bytes.NewBuffer(nil)
+		fieldMap       = bytes.NewBuffer(nil)
 	)
 
 	if primaryField == "" {
@@ -43,6 +44,7 @@ func GenerateStruct(primaryField, pkg string, table string, cols []ColumnInfo) (
 			structLabel.WriteString("\n\t\t")
 			structContent.WriteString("\n\t")
 			structAssemble.WriteString("\n\t")
+			fieldMap.WriteString("\n\t\t")
 		}
 
 		if columns.Len() > 0 {
@@ -56,6 +58,7 @@ func GenerateStruct(primaryField, pkg string, table string, cols []ColumnInfo) (
 		}
 
 		structLabel.WriteString(fmt.Sprintf("\"%s\": \"%s\",", propertyName, c.Comment))
+		fieldMap.WriteString(fmt.Sprintf("\"%s\": \"%s\",", propertyName, c.Field))
 		structContent.WriteString(fmt.Sprintf("%-20s %-15s %-30s%s", fieldName, c.GoType, tag, comment))
 		structAssemble.WriteString(fmt.Sprintf("%s.%s = ", thisName, fieldName))
 		switch c.GoType {
@@ -74,6 +77,7 @@ func GenerateStruct(primaryField, pkg string, table string, cols []ColumnInfo) (
 	model = bytes.ReplaceAll(model, []byte("{structName}"), []byte(structName))
 	model = bytes.ReplaceAll(model, []byte("{this}"), []byte(thisName))
 	model = bytes.ReplaceAll(model, []byte("{structContent}"), structContent.Bytes())
+	model = bytes.ReplaceAll(model, []byte("{fieldMap}"), fieldMap.Bytes())
 	model = bytes.ReplaceAll(model, []byte("{structLabel}"), structLabel.Bytes())
 	model = bytes.ReplaceAll(model, []byte("{structAssemble}"), structAssemble.Bytes())
 

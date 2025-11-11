@@ -102,7 +102,7 @@ func ScanBytesRecords(rows *sql.Rows, err error) ([]BytesRecord, error) {
 func ScanModel[T Model](model T, rows *sql.Rows, err error) ([]T, error) {
 	brs, err := ScanBytesRecords(rows, err)
 	if err != nil {
-		return nil, err
+		return make([]T, 0), err
 	}
 
 	return BytesRecords2Models(brs, model), nil

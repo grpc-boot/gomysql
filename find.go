@@ -74,7 +74,7 @@ func FindModelsTimeout[T Model](timeout time.Duration, model T, db Executor, q *
 func FindModelsContext[T Model](ctx context.Context, model T, db Executor, q *helper.Query) ([]T, error) {
 	rows, err := SelectContext(ctx, db, q)
 	if err != nil {
-		return nil, err
+		return make([]T, 0), err
 	}
 
 	return ScanModel(model, rows, err)

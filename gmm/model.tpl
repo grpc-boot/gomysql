@@ -22,6 +22,12 @@ func ({this} *{structName}) LabelMap() map[string]string {
     }
 }
 
+func ({this} *{structName}) FieldMap() map[string]string {
+    return map[string]string{
+        {fieldMap}
+    }
+}
+
 func ({this} *{structName}) PrimaryKey() string {
     return "{primaryField}"
 }
